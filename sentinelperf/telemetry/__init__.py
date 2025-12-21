@@ -4,7 +4,13 @@ from sentinelperf.telemetry.base import TelemetrySource, TelemetryData, Endpoint
 from sentinelperf.telemetry.otel import OpenTelemetrySource
 from sentinelperf.telemetry.logs import AccessLogSource
 from sentinelperf.telemetry.prometheus import PrometheusSource
-from sentinelperf.telemetry.baseline import BaselineInference, BaselineBehavior, EndpointBaseline
+from sentinelperf.telemetry.baseline import (
+    BaselineInference,
+    BaselineBehavior,
+    EndpointBaseline,
+    BaselineConfidence,
+    DataQualityFlag,
+)
 
 __all__ = [
     "TelemetrySource",
@@ -17,4 +23,6 @@ __all__ = [
     "BaselineInference",
     "BaselineBehavior",
     "EndpointBaseline",
+    "BaselineConfidence",
+    "DataQualityFlag",
 ]

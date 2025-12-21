@@ -1,0 +1,131 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-12-21T17:43:41.810399",
+  "status": "success",
+  "target": {
+    "url": "http://localhost:8765",
+    "environment": "test"
+  },
+  "execution": {
+    "started_at": "2025-12-21T17:40:30.683312",
+    "completed_at": null,
+    "duration_seconds": null,
+    "phase": "report_generation",
+    "errors": [
+      "No telemetry source configured or enabled"
+    ]
+  },
+  "telemetry": {
+    "available": false
+  },
+  "breaking_point": {
+    "detected": false,
+    "classification": "no_failure",
+    "message": "No breaking point detected within tested parameters",
+    "timeline": [
+      {
+        "timestamp": "t0",
+        "event_type": "load_change",
+        "description": "Load increased to 2 VUs (baseline)",
+        "test_type": "baseline",
+        "vus": 2,
+        "metrics": {
+          "rps": 4.746319435732514
+        }
+      },
+      {
+        "timestamp": "t1",
+        "event_type": "load_change",
+        "description": "Load increased to 25 VUs (stress)",
+        "test_type": "stress",
+        "vus": 25,
+        "metrics": {
+          "rps": 41.76319095644611
+        }
+      }
+    ]
+  },
+  "root_cause": {
+    "analyzed": true,
+    "primary_cause": "No failure detected within test parameters",
+    "confidence": 0.95,
+    "llm_mode": "ollama",
+    "reasoning_steps": [
+      "Step 1: Analyzed load test results from baseline, stress, and spike tests",
+      "Step 2: Observed 2 load changes and 0 violations",
+      "Step 4: Classification rationale - No violations detected",
+      "Step 5: Classified as no_failure"
+    ],
+    "supporting_evidence": [
+      "Load tests: 7049 total requests",
+      "Average error rate: 0.0%",
+      "Max P95 latency: 25.8ms"
+    ],
+    "recommendations": [
+      {
+        "action": "Increase load test intensity to find actual limits",
+        "rationale": "No breaking point found within test parameters",
+        "confidence": 0.7,
+        "priority": 1,
+        "estimated_impact": "Medium - helps establish true capacity"
+      }
+    ]
+  },
+  "load_tests": [
+    {
+      "test_type": "baseline",
+      "vus": 2,
+      "duration": "26s",
+      "total_requests": 119,
+      "successful_requests": 119,
+      "failed_requests": 0,
+      "error_rate": 0,
+      "latency": {
+        "p50_ms": 20.943445,
+        "p95_ms": 25.8179458,
+        "p99_ms": 25.8986051
+      },
+      "throughput_rps": 4.746319435732514,
+      "timestamp": "2025-12-21T17:43:41.808822"
+    },
+    {
+      "test_type": "stress",
+      "vus": 25,
+      "duration": "121s",
+      "total_requests": 5020,
+      "successful_requests": 5020,
+      "failed_requests": 0,
+      "error_rate": 0,
+      "latency": {
+        "p50_ms": 21.149003999999998,
+        "p95_ms": 25.76412695,
+        "p99_ms": 26.39343843
+      },
+      "throughput_rps": 41.76319095644611,
+      "timestamp": "2025-12-21T17:43:41.808831"
+    },
+    {
+      "test_type": "spike",
+      "vus": 25,
+      "duration": "45s",
+      "total_requests": 1910,
+      "successful_requests": 1910,
+      "failed_requests": 0,
+      "error_rate": 0,
+      "latency": {
+        "p50_ms": 21.166882,
+        "p95_ms": 25.79952915,
+        "p99_ms": 26.22417082
+      },
+      "throughput_rps": 43.18774047658592,
+      "timestamp": "2025-12-21T17:43:41.808833"
+    }
+  ],
+  "ci_cd": {
+    "exit_code": 0,
+    "thresholds_passed": true,
+    "summary": "PASS: No breaking point detected for http://localhost:8765",
+    "breaking_point_vus": null,
+    "root_cause_confidence": 0.95
+  }
+}

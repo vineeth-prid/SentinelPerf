@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: stress_test
 // Type: stress
 // Target: http://localhost:8765
-// Generated: 2025-12-21T17:37:03.781167Z
+// Generated: 2025-12-21T17:40:56.345753Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -19,11 +19,12 @@ const latencyTrend = new Trend('sentinelperf_latency');
 export const options = {
   stages: [
     { duration: '5s', target: 1 },
-    { duration: '20s', target: 5 },
-    { duration: '20s', target: 9 },
-    { duration: '20s', target: 13 },
-    { duration: '20s', target: 15 },
-    { duration: '10s', target: 15 },
+    { duration: '20s', target: 6 },
+    { duration: '20s', target: 11 },
+    { duration: '20s', target: 16 },
+    { duration: '20s', target: 21 },
+    { duration: '20s', target: 25 },
+    { duration: '10s', target: 25 },
     { duration: '5s', target: 0 }
   ],
   thresholds: {
@@ -42,27 +43,15 @@ export default function () {
   let res;
   let endpoint = '';
   
-    if (rand < 0.1852) {
+    if (rand < 0.3333) {
     res = http.get(`${BASE_URL}/api/users`, { headers: headers });
     endpoint = 'GET /api/users';
-  } else   if (rand < 0.3704) {
+  } else   if (rand < 0.6667) {
     res = http.get(`${BASE_URL}/api/orders`, { headers: headers });
     endpoint = 'GET /api/orders';
-  } else   if (rand < 0.5556) {
+  } else   if (rand < 1.0000) {
     res = http.get(`${BASE_URL}/api/products`, { headers: headers });
     endpoint = 'GET /api/products';
-  } else   if (rand < 0.6667) {
-    res = http.post(`${BASE_URL}/api/users`, '{}', { headers: headers });
-    endpoint = 'POST /api/users';
-  } else   if (rand < 0.7778) {
-    res = http.get(`${BASE_URL}/api/users/:id`, { headers: headers });
-    endpoint = 'GET /api/users/:id';
-  } else   if (rand < 0.8889) {
-    res = http.del(`${BASE_URL}/api/orders/:id`, null, { headers: headers });
-    endpoint = 'DELETE /api/orders/:id';
-  } else   if (rand < 1.0000) {
-    res = http.get(`${BASE_URL}/health`, { headers: headers });
-    endpoint = 'GET /health';
   }
   
   // Record metrics

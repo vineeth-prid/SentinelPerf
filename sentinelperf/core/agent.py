@@ -390,11 +390,16 @@ class SentinelPerfAgent:
         # Clear previous scripts
         self._generated_scripts = []
         
+        # Determine test durations - shorter for small VU counts
+        baseline_duration = self.config.load.hold_duration
+        stress_step_duration = "10s" if max_vus <= 10 else "20s"
+        spike_duration = "10s" if max_vus <= 10 else "20s"
+        
         # 1. Baseline test - validate current behavior
         baseline_test = generator.generate_baseline_test(
             endpoints=endpoints,
             target_vus=max(1, initial_vus),
-            duration="30s",
+            duration=baseline_duration,
             error_threshold=self.config.load.error_rate_threshold,
             p95_threshold_ms=self.config.load.p95_latency_threshold_ms,
         )
@@ -406,7 +411,7 @@ class SentinelPerfAgent:
             start_vus=1,
             max_vus=max_vus,
             step_vus=self.config.load.adaptive_step,
-            step_duration="30s",
+            step_duration=stress_step_duration,
         )
         self._generated_scripts.append(stress_test)
         
@@ -415,7 +420,7 @@ class SentinelPerfAgent:
             endpoints=endpoints,
             baseline_vus=max(1, initial_vus),
             spike_vus=max_vus,
-            spike_duration="20s",
+            spike_duration=spike_duration,
         )
         self._generated_scripts.append(spike_test)
         

@@ -142,6 +142,9 @@ class AgentState:
     # Root cause analysis (LLM-assisted)
     root_cause: Optional[RootCauseAnalysis] = None
     
+    # Recommendations
+    recommendations: Optional[Dict[str, Any]] = None  # RecommendationResult.to_dict()
+    
     # Error tracking
     errors: List[str] = field(default_factory=list)
     

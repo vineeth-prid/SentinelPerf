@@ -73,7 +73,6 @@ class K6Result:
         duration_values = http_req_duration.get("values", {})
         
         # Extract threshold results
-        root_group = json_data.get("root_group", {})
         thresholds = json_data.get("thresholds", {})
         threshold_results = {}
         thresholds_passed = True

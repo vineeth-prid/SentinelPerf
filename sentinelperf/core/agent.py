@@ -80,8 +80,8 @@ class SentinelPerfAgent:
     def _build_graph(self) -> StateGraph:
         """Build the LangGraph state machine"""
         
-        # Define the graph with AgentState as state schema
-        workflow = StateGraph(AgentState)
+        # Define the graph with GraphState (TypedDict) as state schema
+        workflow = StateGraph(GraphState)
         
         # Add nodes for each phase
         workflow.add_node("telemetry_analysis", self._node_telemetry_analysis)

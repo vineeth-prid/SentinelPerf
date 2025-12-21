@@ -43,6 +43,7 @@ class GraphState(TypedDict, total=False):
     failure_category: Optional[str]
     failure_analysis: Optional[DeterministicFailureAnalysis]  # Rules-based analysis
     root_cause: Optional[RootCauseAnalysis]  # LLM-assisted analysis
+    recommendations: Optional[Dict[str, Any]]  # RecommendationResult
     errors: List[str]
     started_at: str
     completed_at: Optional[str]

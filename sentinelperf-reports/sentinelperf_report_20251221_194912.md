@@ -2,7 +2,7 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-21 19:40:31 UTC  
+**Generated:** 2025-12-21 19:49:12 UTC  
 **Status:** ⚠️ report_generation
 
 ---
@@ -80,9 +80,9 @@ System capacity exceeds tested load levels
 
 | Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
 |-----------|-----|----------|----------|------------|-------------|------------|
-| baseline | 2 | 26s | 117 | 0.00% | 36ms | 4.7 RPS |
-| stress | 15 | 121s | 2996 | 0.00% | 36ms | 25.0 RPS |
-| spike | 15 | 45s | 1163 | 0.00% | 36ms | 26.3 RPS |
+| baseline | 2 | 26s | 113 | 0.00% | 35ms | 4.5 RPS |
+| stress | 15 | 121s | 2950 | 0.00% | 36ms | 24.6 RPS |
+| spike | 15 | 45s | 1153 | 0.09% | 36ms | 26.2 RPS |
 
 ## Telemetry Analysis
 

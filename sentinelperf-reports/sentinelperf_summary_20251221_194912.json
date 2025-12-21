@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "generated_at": "2025-12-21T19:40:31.084323",
+  "generated_at": "2025-12-21T19:49:12.663230",
   "status": "success",
   "target": {
     "url": "http://localhost:8765",
     "environment": "test"
   },
   "execution": {
-    "started_at": "2025-12-21T19:37:19.983558",
+    "started_at": "2025-12-21T19:46:01.505919",
     "completed_at": null,
     "duration_seconds": null,
     "phase": "report_generation",
@@ -30,7 +30,7 @@
         "test_type": "baseline",
         "vus": 2,
         "metrics": {
-          "rps": 4.664059914810252
+          "rps": 4.512172432346542
         }
       },
       {
@@ -40,7 +40,7 @@
         "test_type": "stress",
         "vus": 15,
         "metrics": {
-          "rps": 24.955457878672487
+          "rps": 24.55353020864518
         }
       }
     ]
@@ -97,49 +97,49 @@
       "test_type": "baseline",
       "vus": 2,
       "duration": "26s",
-      "total_requests": 117,
-      "successful_requests": 117,
+      "total_requests": 113,
+      "successful_requests": 113,
       "failed_requests": 0,
       "error_rate": 0,
       "latency": {
-        "p50_ms": 30.866662,
-        "p95_ms": 35.920344199999995,
-        "p99_ms": 36.34886648
+        "p50_ms": 31.972264,
+        "p95_ms": 35.38345639999999,
+        "p99_ms": 36.985672279999996
       },
-      "throughput_rps": 4.664059914810252,
-      "timestamp": "2025-12-21T19:40:31.032738"
+      "throughput_rps": 4.512172432346542,
+      "timestamp": "2025-12-21T19:49:12.612102"
     },
     {
       "test_type": "stress",
       "vus": 15,
       "duration": "121s",
-      "total_requests": 2996,
-      "successful_requests": 2996,
+      "total_requests": 2950,
+      "successful_requests": 2950,
       "failed_requests": 0,
       "error_rate": 0,
       "latency": {
-        "p50_ms": 31.161672,
-        "p95_ms": 35.890505,
-        "p99_ms": 36.5534927
+        "p50_ms": 31.34759,
+        "p95_ms": 35.91263095,
+        "p99_ms": 36.514106049999995
       },
-      "throughput_rps": 24.955457878672487,
-      "timestamp": "2025-12-21T19:40:31.032742"
+      "throughput_rps": 24.55353020864518,
+      "timestamp": "2025-12-21T19:49:12.612106"
     },
     {
       "test_type": "spike",
       "vus": 15,
       "duration": "45s",
-      "total_requests": 1163,
-      "successful_requests": 1163,
-      "failed_requests": 0,
-      "error_rate": 0,
+      "total_requests": 1153,
+      "successful_requests": 1152,
+      "failed_requests": 1,
+      "error_rate": 0.0008673026886383347,
       "latency": {
-        "p50_ms": 31.11119,
-        "p95_ms": 35.922786200000004,
-        "p99_ms": 36.51767564
+        "p50_ms": 31.758025,
+        "p95_ms": 35.8591232,
+        "p99_ms": 36.62354288
       },
-      "throughput_rps": 26.2710571168748,
-      "timestamp": "2025-12-21T19:40:31.032744"
+      "throughput_rps": 26.176671128132146,
+      "timestamp": "2025-12-21T19:49:12.612108"
     }
   ],
   "ci_cd": {

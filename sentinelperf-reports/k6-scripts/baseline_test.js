@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: baseline_test
 // Type: baseline
 // Target: http://localhost:8765
-// Generated: 2025-12-21T17:52:57.935731Z
+// Generated: 2025-12-21T18:12:15.550071Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -18,8 +18,8 @@ const latencyTrend = new Trend('sentinelperf_latency');
 // Test configuration
 export const options = {
   stages: [
-    { duration: '10s', target: 5 },
-    { duration: '10s', target: 5 },
+    { duration: '10s', target: 1 },
+    { duration: '10s', target: 1 },
     { duration: '5s', target: 0 }
   ],
   thresholds: {
@@ -38,15 +38,27 @@ export default function () {
   let res;
   let endpoint = '';
   
-    if (rand < 0.3333) {
+    if (rand < 0.1852) {
     res = http.get(`${BASE_URL}/api/users`, { headers: headers });
     endpoint = 'GET /api/users';
-  } else   if (rand < 0.6667) {
+  } else   if (rand < 0.3704) {
     res = http.get(`${BASE_URL}/api/orders`, { headers: headers });
     endpoint = 'GET /api/orders';
-  } else   if (rand < 1.0000) {
+  } else   if (rand < 0.5556) {
     res = http.get(`${BASE_URL}/api/products`, { headers: headers });
     endpoint = 'GET /api/products';
+  } else   if (rand < 0.6667) {
+    res = http.post(`${BASE_URL}/api/users`, '{}', { headers: headers });
+    endpoint = 'POST /api/users';
+  } else   if (rand < 0.7778) {
+    res = http.get(`${BASE_URL}/api/users/:id`, { headers: headers });
+    endpoint = 'GET /api/users/:id';
+  } else   if (rand < 0.8889) {
+    res = http.del(`${BASE_URL}/api/orders/:id`, null, { headers: headers });
+    endpoint = 'DELETE /api/orders/:id';
+  } else   if (rand < 1.0000) {
+    res = http.get(`${BASE_URL}/health`, { headers: headers });
+    endpoint = 'GET /health';
   }
   
   // Record metrics

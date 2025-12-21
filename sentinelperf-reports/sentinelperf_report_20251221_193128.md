@@ -2,52 +2,51 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-21 19:24:25 UTC  
+**Generated:** 2025-12-21 19:31:28 UTC  
 **Status:** ⚠️ report_generation
 
 ---
 
 ## Executive Summary
 
-The system reached its **breaking point at 2 virtual users** (0.0 requests/second), where error_rate_breach exceeded acceptable thresholds.
+The system reached its **breaking point at 15 virtual users** (9.3 requests/second), where error_rate_breach exceeded acceptable thresholds.
 
-**Primary Root Cause:** Pre-existing system issues before load testing (confidence: 85%)
+**Primary Root Cause:** Error propagation and cascade effect (confidence: 85%)
 
 ## Breaking Point Analysis
 
-**Classification:** Already Degraded Baseline
+**Classification:** Error Driven Collapse
 
 | Metric | Value |
 |--------|-------|
-| Virtual Users at Break | 2 |
-| Requests/Second at Break | 0.0 |
+| Virtual Users at Break | 15 |
+| Requests/Second at Break | 9.3 |
 | Failure Type | error_rate_breach |
 | Threshold Exceeded | error_rate > 0.05 |
-| Observed Value | 1.0000 |
+| Observed Value | 0.1215 |
 | Threshold Value | 0.0500 |
 | Detection Confidence | 85% |
 
 ### Observed Signals
 
-- error_rate_breach at 2 VUs
-- Observed: 1.0000, Threshold: 0.0500
-- Severity: 20.00x threshold
-- Error rate: 100.00%
-- P95 latency: 48099.3ms
-- Throughput: 0.0 RPS
+- error_rate_breach at 15 VUs
+- Observed: 0.1215, Threshold: 0.0500
+- Severity: 2.43x threshold
+- Error rate: 12.15%
+- P95 latency: 5044.5ms
+- Throughput: 9.3 RPS
 
 ### Failure Timeline
 
 | Time | Event | Test Type | VUs | Description |
 |------|-------|-----------|-----|-------------|
 | t0 | 📈 load_change | baseline | 2 | Load increased to 2 VUs (baseline) |
-| t1 | 🔴 error_rate_breach | baseline | 2 | Error rate crossed threshold (100.0% > 5.0%) |
-| t2 | 🟠 latency_degradation | baseline | 2 | Latency exceeded threshold (48099ms > 200ms) |
-| t3 | 📈 load_change | stress | 15 | Load increased to 15 VUs (stress) |
-| t4 | 🔴 error_rate_breach | stress | 15 | Error rate crossed threshold (80.6% > 5.0%) |
-| t5 | 🟠 latency_degradation | stress | 15 | Latency exceeded threshold (19461ms > 200ms) |
-| t6 | 🔴 error_rate_breach | spike | 15 | Error rate crossed threshold (34.0% > 5.0%) |
-| t7 | 🟠 latency_degradation | spike | 15 | Latency exceeded threshold (7246ms > 200ms) |
+| t1 | 📈 load_change | stress | 15 | Load increased to 15 VUs (stress) |
+| t2 | 🔴 error_rate_breach | stress | 15 | Error rate crossed threshold (12.2% > 5.0%) |
+| t3 | 🟠 latency_degradation | stress | 15 | Latency slope changed (123.4x increase) |
+| t4 | 🟠 latency_degradation | stress | 15 | Latency exceeded threshold (5044ms > 200ms) |
+| t5 | 🔴 error_rate_breach | spike | 15 | Error rate crossed threshold (22.3% > 5.0%) |
+| t6 | 🟠 latency_degradation | spike | 15 | Latency exceeded threshold (7242ms > 200ms) |
 
 ## Root Cause Analysis
 
@@ -57,16 +56,16 @@ The system reached its **breaking point at 2 virtual users** (0.0 requests/secon
 
 ### Summary
 
-System showed degradation even at baseline load levels at 2 VUs (0.0 RPS)
+Error rate exceeded threshold causing cascading failures at 15 VUs (9.3 RPS)
 
 ### Primary Cause
 
-Pre-existing system issues before load testing
+Error propagation and cascade effect
 
 ### Contributing Factors
 
-- Latency degradation detected
 - Error rate exceeded threshold
+- Latency degradation detected
 
 ### Assumptions
 
@@ -80,49 +79,48 @@ Pre-existing system issues before load testing
 
 ## Recommendations
 
-### 1. Fix baseline errors before load testing
+### 1. Inspect error types and downstream dependencies
 
 **Priority:** 🔴 P1  
 **Risk:** 🟢 LOW  
-**Confidence:** 88%
-
-**Rationale:** System already degraded at minimal load (detected at 2 VUs, 0.0 RPS via error_rate_breach)
-
-**Expected Impact:** Establish healthy baseline for accurate testing
-
-### 2. Check service health and dependencies
-
-**Priority:** 🟡 P2  
-**Risk:** 🟢 LOW  
 **Confidence:** 85%
 
-**Rationale:** Baseline errors suggest infrastructure issues
+**Rationale:** Errors cascaded causing system collapse (detected at 15 VUs, 9.3 RPS via error_rate_breach)
 
-**Expected Impact:** Identify and resolve pre-existing problems
+**Expected Impact:** Identify root cause of error propagation
 
-### 3. Review recent deployments or configuration changes
+### 2. Implement circuit breaker pattern
+
+**Priority:** 🟡 P2  
+**Risk:** 🟡 MEDIUM  
+**Confidence:** 82%
+
+**Rationale:** Prevent cascade failures from propagating
+
+**Expected Impact:** Graceful degradation instead of collapse
+
+### 3. Add rate limiting at entry points
 
 **Priority:** 🟡 P3  
-**Risk:** 🟢 LOW  
-**Confidence:** 74%
+**Risk:** 🟡 MEDIUM  
+**Confidence:** 78%
 
-**Rationale:** Baseline degradation may be from recent changes
+**Rationale:** Protect system from overload-induced errors
 
-**Expected Impact:** Rollback if recent change caused degradation
+**Expected Impact:** Controlled rejection instead of uncontrolled failure
 
 ### Limitations
 
 - Recommendations are guidance, not prescriptions
 - Actual fixes require system-specific investigation
-- Baseline issues must be fixed before further analysis
 
 ## Load Test Results
 
 | Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
 |-----------|-----|----------|----------|------------|-------------|------------|
-| baseline | 2 | 53s | 1 | 100.00% | 48099ms | 0.0 RPS |
-| stress | 15 | 130s | 67 | 80.60% | 19461ms | 0.5 RPS |
-| spike | 15 | 45s | 162 | 33.95% | 7246ms | 3.7 RPS |
+| baseline | 2 | 26s | 108 | 0.00% | 41ms | 4.3 RPS |
+| stress | 15 | 125s | 1152 | 12.15% | 5044ms | 9.3 RPS |
+| spike | 15 | 45s | 211 | 22.27% | 7242ms | 4.8 RPS |
 
 ## Telemetry Analysis
 

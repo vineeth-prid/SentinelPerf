@@ -1,0 +1,214 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {"key": "service.name", "value": {"stringValue": "api-gateway"}},
+          {"key": "service.version", "value": {"stringValue": "1.2.3"}}
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {"name": "http-server"},
+          "spans": [
+            {
+              "traceId": "abc123",
+              "spanId": "span001",
+              "name": "GET /api/users",
+              "startTimeUnixNano": "1703170800000000000",
+              "endTimeUnixNano": "1703170800045000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/users"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc124",
+              "spanId": "span002",
+              "name": "GET /api/users",
+              "startTimeUnixNano": "1703170801000000000",
+              "endTimeUnixNano": "1703170801052000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/users"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc125",
+              "spanId": "span003",
+              "name": "GET /api/users",
+              "startTimeUnixNano": "1703170802000000000",
+              "endTimeUnixNano": "1703170802038000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/users"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc126",
+              "spanId": "span004",
+              "name": "POST /api/users",
+              "startTimeUnixNano": "1703170803000000000",
+              "endTimeUnixNano": "1703170803125000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "POST"}},
+                {"key": "http.route", "value": {"stringValue": "/api/users"}},
+                {"key": "http.status_code", "value": {"intValue": 201}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc127",
+              "spanId": "span005",
+              "name": "GET /api/orders",
+              "startTimeUnixNano": "1703170804000000000",
+              "endTimeUnixNano": "1703170804089000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/orders"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc128",
+              "spanId": "span006",
+              "name": "GET /api/orders",
+              "startTimeUnixNano": "1703170805000000000",
+              "endTimeUnixNano": "1703170805156000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/orders"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc129",
+              "spanId": "span007",
+              "name": "GET /api/products",
+              "startTimeUnixNano": "1703170806000000000",
+              "endTimeUnixNano": "1703170806067000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/products"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc130",
+              "spanId": "span008",
+              "name": "GET /api/products",
+              "startTimeUnixNano": "1703170807000000000",
+              "endTimeUnixNano": "1703170807234000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/products"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc131",
+              "spanId": "span009",
+              "name": "GET /api/products",
+              "startTimeUnixNano": "1703170808000000000",
+              "endTimeUnixNano": "1703170808045000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/products"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc132",
+              "spanId": "span010",
+              "name": "GET /api/users/123",
+              "startTimeUnixNano": "1703170809000000000",
+              "endTimeUnixNano": "1703170809078000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/users/:id"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc133",
+              "spanId": "span011",
+              "name": "DELETE /api/orders/456",
+              "startTimeUnixNano": "1703170810000000000",
+              "endTimeUnixNano": "1703170810189000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "DELETE"}},
+                {"key": "http.route", "value": {"stringValue": "/api/orders/:id"}},
+                {"key": "http.status_code", "value": {"intValue": 204}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc134",
+              "spanId": "span012",
+              "name": "GET /api/users",
+              "startTimeUnixNano": "1703170811000000000",
+              "endTimeUnixNano": "1703170811567000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/users"}},
+                {"key": "http.status_code", "value": {"intValue": 500}}
+              ],
+              "status": {"code": "STATUS_CODE_ERROR"}
+            },
+            {
+              "traceId": "abc135",
+              "spanId": "span013",
+              "name": "GET /health",
+              "startTimeUnixNano": "1703170812000000000",
+              "endTimeUnixNano": "1703170812012000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/health"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc136",
+              "spanId": "span014",
+              "name": "GET /api/users",
+              "startTimeUnixNano": "1703170813000000000",
+              "endTimeUnixNano": "1703170813098000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/users"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            },
+            {
+              "traceId": "abc137",
+              "spanId": "span015",
+              "name": "GET /api/orders",
+              "startTimeUnixNano": "1703170814000000000",
+              "endTimeUnixNano": "1703170814145000000",
+              "attributes": [
+                {"key": "http.method", "value": {"stringValue": "GET"}},
+                {"key": "http.route", "value": {"stringValue": "/api/orders"}},
+                {"key": "http.status_code", "value": {"intValue": 200}}
+              ],
+              "status": {"code": "STATUS_CODE_OK"}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

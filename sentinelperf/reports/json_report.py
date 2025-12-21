@@ -86,25 +86,30 @@ class JSONReporter:
         }
     
     def _breaking_point_summary(self, state: AgentState) -> Dict[str, Any]:
-        """Breaking point section"""
-        if not state.breaking_point or state.breaking_point.vus_at_break == 0:
-            return {
-                "detected": False,
-                "message": "No breaking point detected within tested parameters",
-            }
-        
-        bp = state.breaking_point
-        return {
-            "detected": True,
-            "vus_at_break": bp.vus_at_break,
-            "rps_at_break": bp.rps_at_break,
-            "failure_type": bp.failure_type,
-            "threshold_exceeded": bp.threshold_exceeded,
-            "observed_value": bp.observed_value,
-            "threshold_value": bp.threshold_value,
-            "confidence": bp.confidence,
-            "signals": bp.signals,
+        """Breaking point section with classification and timeline"""
+        result = {
+            "detected": False,
+            "classification": state.failure_category or "no_failure",
+            "message": "No breaking point detected within tested parameters",
+            "timeline": state.failure_timeline or [],
         }
+        
+        if state.breaking_point and state.breaking_point.vus_at_break > 0:
+            bp = state.breaking_point
+            result.update({
+                "detected": True,
+                "vus_at_break": bp.vus_at_break,
+                "rps_at_break": bp.rps_at_break,
+                "failure_type": bp.failure_type,
+                "threshold_exceeded": bp.threshold_exceeded,
+                "observed_value": bp.observed_value,
+                "threshold_value": bp.threshold_value,
+                "confidence": bp.confidence,
+                "signals": bp.signals,
+                "message": f"Breaking point at {bp.vus_at_break} VUs ({bp.failure_type})",
+            })
+        
+        return result
     
     def _root_cause_summary(self, state: AgentState) -> Dict[str, Any]:
         """Root cause section"""

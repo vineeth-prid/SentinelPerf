@@ -152,6 +152,13 @@ class SentinelPerfConfig(BaseModel):
             raise ValueError("No active environment set")
         return self.environments[self._active_env].llm
     
+    @property
+    def recommendations(self) -> RecommendationsConfig:
+        """Get recommendations config for active environment"""
+        if not self._active_env:
+            raise ValueError("No active environment set")
+        return self.environments[self._active_env].recommendations
+    
     def set_active_environment(self, env_name: str) -> None:
         """Set the active environment"""
         if env_name not in self.environments:

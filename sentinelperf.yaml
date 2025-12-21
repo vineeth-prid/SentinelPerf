@@ -32,4 +32,6 @@ environments:
       adaptive_step: 10
     
     llm:
-      provider: "mock"
+      provider: "ollama"
+      model: "qwen2.5:14b"
+      timeout: 60

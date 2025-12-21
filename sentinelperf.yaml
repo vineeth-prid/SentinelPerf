@@ -23,13 +23,13 @@ environments:
         enabled: false
     
     load:
-      initial_vus: 2
-      max_vus: 25
+      initial_vus: 5
+      max_vus: 50
       ramp_duration: "10s"
       hold_duration: "10s"
-      error_rate_threshold: 0.1
-      p95_latency_threshold_ms: 500
-      adaptive_step: 5
+      error_rate_threshold: 0.05  # 5% error threshold - more strict
+      p95_latency_threshold_ms: 200  # 200ms P95 threshold
+      adaptive_step: 10
     
     llm:
       provider: "mock"

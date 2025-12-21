@@ -15,7 +15,7 @@ environments:
     
     telemetry:
       otel:
-        enabled: false  # Disable to use configured endpoints
+        enabled: true
         path: "/app/test_data/sample_otel_export.json"
       logs:
         enabled: false

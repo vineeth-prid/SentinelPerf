@@ -170,6 +170,10 @@ class BaselineBehavior:
         else:
             max_vus = 100  # Default
         
+        # Cap more aggressively if confidence is low
+        if self.confidence and self.confidence.level in ("LOW", "VERY_LOW"):
+            return max(5, min(max_vus, 20))  # Between 5 and 20 for low confidence
+        
         return max(10, min(max_vus, 500))  # Between 10 and 500
     
     def get_confidence_summary(self) -> str:

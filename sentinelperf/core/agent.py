@@ -375,9 +375,12 @@ class SentinelPerfAgent:
                     {"path": self.config.target.health_endpoint, "method": "GET", "weight": 1}
                 ]
         
-        # Get recommended VUs from baseline
-        initial_vus = load_plan_input.get("recommended_initial_vus", self.config.load.initial_vus)
-        max_vus = load_plan_input.get("recommended_max_vus", self.config.load.max_vus)
+        # Get recommended VUs from baseline, but cap by config
+        recommended_initial = load_plan_input.get("recommended_initial_vus", self.config.load.initial_vus)
+        recommended_max = load_plan_input.get("recommended_max_vus", self.config.load.max_vus)
+        
+        initial_vus = min(recommended_initial, self.config.load.initial_vus) if self.config.load.initial_vus > 0 else recommended_initial
+        max_vus = min(recommended_max, self.config.load.max_vus)  # Always respect config limit
         
         # Generate tests based on baseline
         baseline_metrics = load_plan_input.get("baseline", {})

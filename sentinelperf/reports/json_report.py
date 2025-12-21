@@ -119,12 +119,15 @@ class JSONReporter:
         rc = state.root_cause
         return {
             "analyzed": True,
+            "root_cause_summary": rc.root_cause_summary,
             "primary_cause": rc.primary_cause,
+            "contributing_factors": rc.contributing_factors,
             "confidence": rc.confidence,
+            "assumptions": rc.assumptions,
+            "limitations": rc.limitations,
             "llm_mode": rc.llm_mode,
-            "reasoning_steps": rc.reasoning_steps,
-            "supporting_evidence": rc.supporting_evidence,
-            "recommendations": rc.recommendations,
+            "llm_model": rc.llm_model,
+            "llm_latency_ms": rc.llm_latency_ms,
         }
     
     def _load_tests_summary(self, state: AgentState) -> list:

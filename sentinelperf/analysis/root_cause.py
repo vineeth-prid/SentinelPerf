@@ -1,230 +1,383 @@
-"""Root cause analysis for SentinelPerf"""
+"""Root Cause Analysis using LLM
 
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, field
+Implements the LLM-assisted root cause analysis with strict input/output contracts.
 
-from sentinelperf.core.state import (
-    BreakingPoint,
-    LoadTestResult,
-    RootCauseAnalysis,
-    TelemetryInsight,
-)
+The LLM is allowed to:
+- Explain why the classification makes sense
+- Connect timeline events causally
+- Translate signals into human reasoning
+- Assign explanation confidence
+
+The LLM is NOT allowed to:
+- Change the classification
+- Invent new metrics
+- Override breaking point
+- Suggest fixes (that's Phase 6)
+"""
+
+import json
+import asyncio
+from typing import Dict, Any, Optional, List
+from dataclasses import dataclass, asdict
+
+from sentinelperf.llm.client import OllamaClient, MockLLMClient, LLMResponse
 from sentinelperf.config.schema import LLMConfig
 
 
 @dataclass
-class AnalysisEvidence:
-    """Evidence supporting a root cause hypothesis"""
-    source: str  # metric, trace, log
-    observation: str
-    relevance: float  # 0.0 to 1.0
+class LLMInputContract:
+    """
+    Strict input contract for LLM root cause analysis.
+    
+    The LLM ONLY receives this structured data - no raw logs, no raw k6 output.
+    """
+    baseline_summary: Dict[str, Any]
+    baseline_confidence: float
+    breaking_point: Optional[Dict[str, Any]]
+    failure_timeline: List[Dict[str, Any]]
+    failure_classification: str
+    classification_rationale: List[str]
+    observed_metrics: Dict[str, Any]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+    
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)
 
 
 @dataclass
-class Recommendation:
-    """A fix recommendation with confidence"""
-    action: str
-    rationale: str
+class LLMOutputContract:
+    """
+    Strict output contract for LLM root cause analysis.
+    
+    The LLM must output this structure - no prose, no additional fields.
+    """
+    root_cause_summary: str
+    primary_cause: str
+    contributing_factors: List[str]
     confidence: float
-    priority: int  # 1 = highest
-    estimated_impact: str
+    assumptions: List[str]
+    limitations: List[str]
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LLMOutputContract":
+        return cls(
+            root_cause_summary=data.get("root_cause_summary", ""),
+            primary_cause=data.get("primary_cause", ""),
+            contributing_factors=data.get("contributing_factors", []),
+            confidence=data.get("confidence", 0.0),
+            assumptions=data.get("assumptions", []),
+            limitations=data.get("limitations", []),
+        )
+    
+    @classmethod
+    def from_json(cls, json_str: str) -> "LLMOutputContract":
+        try:
+            data = json.loads(json_str)
+            return cls.from_dict(data)
+        except json.JSONDecodeError:
+            return cls(
+                root_cause_summary="Failed to parse LLM response",
+                primary_cause="Unknown",
+                contributing_factors=[],
+                confidence=0.0,
+                assumptions=[],
+                limitations=["LLM response was not valid JSON"],
+            )
+
+
+# System prompt for root cause analysis
+ROOT_CAUSE_SYSTEM_PROMPT = """You are a senior performance engineer analyzing a system failure.
+
+Your role is strictly limited to:
+1. EXPLAIN why the given classification makes sense based on the timeline
+2. CONNECT timeline events to show causal relationships
+3. TRANSLATE technical signals into human-understandable reasoning
+4. ASSIGN a confidence score to your explanation
+
+You are NOT allowed to:
+- Change the failure classification (it's already determined)
+- Invent metrics not present in the input
+- Override the breaking point analysis
+- Suggest fixes or recommendations (that's a separate phase)
+
+Think of your task as: "Explaining the incident to another engineer"
+
+OUTPUT FORMAT:
+You MUST respond with a valid JSON object in this exact structure:
+{
+  "root_cause_summary": "1-2 sentence summary of why the system failed",
+  "primary_cause": "The single most important cause",
+  "contributing_factors": ["factor1", "factor2", ...],
+  "confidence": 0.0 to 1.0,
+  "assumptions": ["assumption1", ...],
+  "limitations": ["limitation1", ...]
+}
+
+RULES:
+- Confidence must be between 0.0 and 1.0
+- If data is insufficient, reduce confidence and add to limitations
+- Do not hallucinate - only reference data in the input
+- Be concise - each field should be clear and actionable
+"""
 
 
 class RootCauseAnalyzer:
     """
-    Analyzes breaking point to determine root cause.
+    LLM-assisted root cause analyzer.
     
-    Supports three modes:
-    1. ollama: Use local LLM for analysis
-    2. rules: Use rule-based heuristics
-    3. mock: Return placeholder analysis (testing)
-    
-    LLM Rules (strictly enforced):
-    - LLM may NOT invent metrics
-    - LLM may NOT infer causes without observed signals
-    - LLM must explain reasoning step-by-step
-    - LLM must assign confidence scores based on signal strength
+    Implements strict input/output contracts to prevent hallucination.
+    Falls back to rules-based analysis if LLM is unavailable.
     """
     
-    def __init__(
-        self,
-        llm_config: LLMConfig,
-        mode: str = "ollama",
-    ):
-        self.config = llm_config
-        self.mode = mode
-        self._llm_client = None
+    def __init__(self, config: LLMConfig, verbose: bool = False):
+        self.config = config
+        self.verbose = verbose
+        self.llm_mode = config.provider
+        
+        # Initialize appropriate client
+        if config.provider == "ollama":
+            self.client = OllamaClient(config)
+        elif config.provider == "mock":
+            self.client = MockLLMClient()
+        else:
+            self.client = None  # Rules-only mode
     
     async def analyze(
         self,
-        breaking_point: BreakingPoint,
-        load_results: List[LoadTestResult],
-        telemetry: Optional[TelemetryInsight] = None,
-    ) -> RootCauseAnalysis:
+        baseline_summary: Dict[str, Any],
+        baseline_confidence: float,
+        breaking_point: Optional[Dict[str, Any]],
+        failure_timeline: List[Dict[str, Any]],
+        failure_classification: str,
+        classification_rationale: List[str],
+        observed_metrics: Dict[str, Any],
+    ) -> tuple[LLMOutputContract, str, str, float]:
         """
-        Analyze breaking point to determine root cause.
+        Perform root cause analysis.
         
-        Args:
-            breaking_point: Detected breaking point
-            load_results: All load test results
-            telemetry: Optional telemetry data for context
-            
         Returns:
-            RootCauseAnalysis with cause, confidence, and recommendations
+            Tuple of (output, mode, model, latency_ms)
         """
-        if self.mode == "mock":
-            return self._mock_analysis(breaking_point)
-        elif self.mode == "rules":
-            return self._rules_analysis(breaking_point, load_results)
-        else:
-            return await self._llm_analysis(breaking_point, load_results, telemetry)
-    
-    def _mock_analysis(self, breaking_point: BreakingPoint) -> RootCauseAnalysis:
-        """Return mock analysis for testing"""
-        return RootCauseAnalysis(
-            primary_cause="Mock analysis - no actual root cause determined",
-            confidence=0.0,
-            supporting_evidence=["Mock mode enabled"],
-            reasoning_steps=["Mock mode - no reasoning performed"],
-            recommendations=[{
-                "action": "Run with --llm-mode=ollama for real analysis",
-                "confidence": 1.0,
-                "priority": 1,
-            }],
-            llm_mode="mock",
+        # Build strict input contract
+        input_contract = LLMInputContract(
+            baseline_summary=baseline_summary,
+            baseline_confidence=baseline_confidence,
+            breaking_point=breaking_point,
+            failure_timeline=failure_timeline,
+            failure_classification=failure_classification,
+            classification_rationale=classification_rationale,
+            observed_metrics=observed_metrics,
         )
+        
+        # If LLM is available and enabled, use it
+        if self.client and self.llm_mode == "ollama":
+            llm_available = await self.client.check_available()
+            
+            if llm_available:
+                return await self._analyze_with_llm(input_contract)
+            else:
+                if self.verbose:
+                    print("  ⚠ Ollama not available - using rules-based analysis")
+        
+        # Fall back to rules-based analysis
+        return self._analyze_with_rules(input_contract), "rules", "", 0.0
     
-    def _rules_analysis(
+    async def _analyze_with_llm(
         self,
-        breaking_point: BreakingPoint,
-        load_results: List[LoadTestResult],
-    ) -> RootCauseAnalysis:
-        """Rule-based heuristic analysis"""
+        input_contract: LLMInputContract,
+    ) -> tuple[LLMOutputContract, str, str, float]:
+        """Analyze using LLM with strict contracts"""
         
-        reasoning_steps = []
-        evidence = []
-        recommendations = []
+        # Build user prompt with input contract
+        user_prompt = f"""Analyze this performance test failure:
+
+INPUT DATA:
+```json
+{input_contract.to_json()}
+```
+
+Provide your analysis as JSON following the required output format."""
+
+        # Call LLM
+        response: LLMResponse = await self.client.generate(
+            prompt=user_prompt,
+            system_prompt=ROOT_CAUSE_SYSTEM_PROMPT,
+            temperature=self.config.temperature,
+            max_tokens=1500,
+        )
         
-        # Step 1: Identify failure type
-        reasoning_steps.append(f"Step 1: Identified failure type as '{breaking_point.failure_type}'")
+        if self.verbose:
+            print(f"  LLM response received ({response.latency_ms:.0f}ms, {response.tokens_used} tokens)")
         
-        # Step 2: Analyze based on failure type
-        if breaking_point.failure_type == "error_rate":
-            reasoning_steps.append("Step 2: High error rate indicates capacity or stability issue")
+        # Parse response with strict contract
+        output = self._parse_llm_response(response.content, input_contract)
+        
+        return output, "ollama", response.model, response.latency_ms
+    
+    def _parse_llm_response(
+        self,
+        content: str,
+        input_contract: LLMInputContract,
+    ) -> LLMOutputContract:
+        """Parse LLM response enforcing output contract"""
+        
+        # Try to extract JSON from response
+        try:
+            # Handle responses with markdown code blocks
+            if "```json" in content:
+                json_start = content.find("```json") + 7
+                json_end = content.find("```", json_start)
+                content = content[json_start:json_end].strip()
+            elif "```" in content:
+                json_start = content.find("```") + 3
+                json_end = content.find("```", json_start)
+                content = content[json_start:json_end].strip()
             
-            # Check if errors correlate with VU count
-            error_progression = [(r.vus, r.error_rate) for r in load_results if r.error_rate > 0]
-            if error_progression:
-                reasoning_steps.append(f"Step 3: Error progression: {error_progression}")
-                
-                if len(error_progression) >= 2:
-                    # Errors increase with load
-                    primary_cause = "Connection pool exhaustion or resource saturation"
-                    evidence.append("Errors increase proportionally with VU count")
-                    recommendations.append({
-                        "action": "Increase connection pool size or add horizontal scaling",
-                        "rationale": "Errors correlate with concurrent connections",
-                        "confidence": 0.7,
-                        "priority": 1,
-                        "estimated_impact": "High - directly addresses capacity bottleneck",
-                    })
-                else:
-                    primary_cause = "Application error under load"
-                    evidence.append("Errors appear at specific load threshold")
-                    recommendations.append({
-                        "action": "Review application logs for error patterns",
-                        "rationale": "Sudden errors suggest application-level issue",
-                        "confidence": 0.6,
-                        "priority": 1,
-                        "estimated_impact": "Medium - requires log analysis",
-                    })
-            else:
-                primary_cause = "Unknown error source"
-                
-        elif breaking_point.failure_type == "p95_latency":
-            reasoning_steps.append("Step 2: High latency indicates performance degradation")
+            data = json.loads(content)
+            output = LLMOutputContract.from_dict(data)
             
-            # Check latency progression
-            latency_progression = [(r.vus, r.latency_p95_ms) for r in load_results if r.latency_p95_ms > 0]
-            if latency_progression:
-                reasoning_steps.append(f"Step 3: Latency progression: {latency_progression}")
-                
-                # Check if latency growth is linear or exponential
-                if len(latency_progression) >= 3:
-                    # Simple linear vs exponential check
-                    growth_rates = []
-                    for i in range(1, len(latency_progression)):
-                        prev = latency_progression[i-1][1]
-                        curr = latency_progression[i][1]
-                        if prev > 0:
-                            growth_rates.append(curr / prev)
-                    
-                    avg_growth = sum(growth_rates) / len(growth_rates) if growth_rates else 1.0
-                    
-                    if avg_growth > 1.5:
-                        primary_cause = "Database or downstream service bottleneck"
-                        evidence.append("Exponential latency growth suggests queuing")
-                        recommendations.append({
-                            "action": "Check database query performance and connection limits",
-                            "rationale": "Exponential latency growth typically indicates queuing at a bottleneck",
-                            "confidence": 0.75,
-                            "priority": 1,
-                            "estimated_impact": "High - likely the primary bottleneck",
-                        })
-                    else:
-                        primary_cause = "CPU or memory pressure on application server"
-                        evidence.append("Linear latency growth suggests compute limitation")
-                        recommendations.append({
-                            "action": "Monitor CPU and memory during load test",
-                            "rationale": "Linear degradation suggests compute resource limitation",
-                            "confidence": 0.65,
-                            "priority": 1,
-                            "estimated_impact": "Medium - may require infrastructure scaling",
-                        })
-                else:
-                    primary_cause = "Performance degradation under load"
-            else:
-                primary_cause = "Unknown latency source"
-        else:
-            primary_cause = f"Unknown failure type: {breaking_point.failure_type}"
-            reasoning_steps.append(f"Step 2: Unrecognized failure type '{breaking_point.failure_type}'")
+            # Validate confidence is in range
+            output.confidence = max(0.0, min(1.0, output.confidence))
+            
+            return output
+            
+        except (json.JSONDecodeError, KeyError) as e:
+            # Fall back to rules-based if parsing fails
+            if self.verbose:
+                print(f"  ⚠ Failed to parse LLM response: {e}")
+            
+            return self._analyze_with_rules(input_contract)
+    
+    def _analyze_with_rules(
+        self,
+        input_contract: LLMInputContract,
+    ) -> LLMOutputContract:
+        """
+        Rules-based fallback analysis.
         
-        # Add evidence from breaking point signals
-        for signal in breaking_point.signals:
-            evidence.append(signal)
+        Provides deterministic output when LLM is unavailable.
+        """
+        classification = input_contract.failure_classification
+        breaking_point = input_contract.breaking_point
+        timeline = input_contract.failure_timeline
+        rationale = input_contract.classification_rationale
         
-        # Calculate confidence based on evidence strength
-        confidence = min(0.5 + (len(evidence) * 0.1), 0.85)
+        # Build summary based on classification
+        summaries = {
+            "capacity_exhaustion": "System reached resource limits causing throughput plateau",
+            "latency_amplification": "Request latency increased exponentially under load due to resource contention",
+            "error_driven_collapse": "Error rate exceeded threshold causing cascading failures",
+            "instability_under_burst": "System failed to handle sudden traffic spike",
+            "already_degraded_baseline": "System showed degradation even at baseline load levels",
+            "no_failure": "No breaking point detected within test parameters",
+        }
         
-        return RootCauseAnalysis(
+        primary_causes = {
+            "capacity_exhaustion": "Resource saturation (CPU, memory, or connections)",
+            "latency_amplification": "Queuing at a bottleneck resource",
+            "error_driven_collapse": "Error propagation and cascade effect",
+            "instability_under_burst": "Insufficient burst capacity or cold-start issues",
+            "already_degraded_baseline": "Pre-existing system issues before load testing",
+            "no_failure": "System capacity exceeds tested load levels",
+        }
+        
+        root_cause_summary = summaries.get(classification, "Unknown failure pattern")
+        primary_cause = primary_causes.get(classification, "Unknown cause")
+        
+        # Add context from breaking point
+        if breaking_point:
+            vus = breaking_point.get("vus_at_break", 0)
+            rps = breaking_point.get("rps_at_break", 0)
+            root_cause_summary = f"{root_cause_summary} at {vus} VUs ({rps:.1f} RPS)"
+        
+        # Extract contributing factors from timeline
+        contributing_factors = []
+        violation_types = set()
+        for event in timeline:
+            event_type = event.get("event_type", "")
+            if event_type != "load_change":
+                violation_types.add(event_type)
+        
+        for vtype in violation_types:
+            if vtype == "error_rate_breach":
+                contributing_factors.append("Error rate exceeded threshold")
+            elif vtype == "latency_degradation":
+                contributing_factors.append("Latency degradation detected")
+            elif vtype == "throughput_plateau":
+                contributing_factors.append("Throughput stopped scaling with load")
+            elif vtype == "saturation":
+                contributing_factors.append("Resource saturation detected")
+        
+        # Build assumptions and limitations
+        assumptions = [
+            "Load tests accurately simulate production traffic patterns",
+            "Telemetry data reflects actual system behavior",
+        ]
+        
+        limitations = ["Analysis based on rules-only (LLM unavailable)"]
+        
+        if input_contract.baseline_confidence < 0.5:
+            limitations.append("Low baseline confidence - limited historical data")
+        
+        if len(timeline) < 3:
+            limitations.append("Limited timeline events for detailed analysis")
+        
+        # Calculate confidence based on data quality
+        confidence = 0.6  # Base for rules-only
+        if rationale:
+            confidence += 0.1
+        if breaking_point:
+            confidence += 0.1
+        if len(timeline) >= 5:
+            confidence += 0.1
+        
+        confidence = min(confidence, 0.85)  # Cap rules-based confidence
+        
+        return LLMOutputContract(
+            root_cause_summary=root_cause_summary,
             primary_cause=primary_cause,
+            contributing_factors=contributing_factors,
             confidence=confidence,
-            supporting_evidence=evidence,
-            reasoning_steps=reasoning_steps,
-            recommendations=recommendations,
-            llm_mode="rules",
+            assumptions=assumptions,
+            limitations=limitations,
         )
+
+
+def run_root_cause_analysis(
+    config: LLMConfig,
+    baseline_summary: Dict[str, Any],
+    baseline_confidence: float,
+    breaking_point: Optional[Dict[str, Any]],
+    failure_timeline: List[Dict[str, Any]],
+    failure_classification: str,
+    classification_rationale: List[str],
+    observed_metrics: Dict[str, Any],
+    verbose: bool = False,
+) -> tuple[LLMOutputContract, str, str, float]:
+    """
+    Synchronous wrapper for root cause analysis.
     
-    async def _llm_analysis(
-        self,
-        breaking_point: BreakingPoint,
-        load_results: List[LoadTestResult],
-        telemetry: Optional[TelemetryInsight] = None,
-    ) -> RootCauseAnalysis:
-        """
-        LLM-based root cause analysis using Ollama.
-        
-        Strictly follows the LLM rules:
-        - Only uses observed metrics (no invention)
-        - Step-by-step reasoning
-        - Confidence based on signal strength
-        """
-        # TODO: Implement Ollama integration
-        # For now, fall back to rules-based analysis
-        
-        # This will be implemented with:
-        # 1. Structured prompt with observed metrics only
-        # 2. Chain-of-thought prompting for reasoning
-        # 3. Confidence calibration based on evidence count
-        
-        return self._rules_analysis(breaking_point, load_results)
+    Returns:
+        Tuple of (output, mode, model, latency_ms)
+    """
+    analyzer = RootCauseAnalyzer(config, verbose)
+    
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    return loop.run_until_complete(
+        analyzer.analyze(
+            baseline_summary=baseline_summary,
+            baseline_confidence=baseline_confidence,
+            breaking_point=breaking_point,
+            failure_timeline=failure_timeline,
+            failure_classification=failure_classification,
+            classification_rationale=classification_rationale,
+            observed_metrics=observed_metrics,
+        )
+    )

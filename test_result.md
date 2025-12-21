@@ -7,66 +7,51 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent that:
 3. Detects breaking points using rules-based analysis
 4. Classifies failures with deterministic analysis
 5. Performs LLM-assisted root cause analysis (Ollama/Qwen2.5)
+6. Generates deterministic recommendations with optional LLM polishing
 
 ## Test Status: ✅ PASSED
 
-### Phase 5 Complete: LLM-Assisted Root Cause Analysis
+### Phase 6 Complete: Recommendations Engine
 
-#### Architecture Changes
-- **Renamed** `RootCauseAnalysis` (old) → `DeterministicFailureAnalysis` (rules-based)
-- **New** `RootCauseAnalysis` for LLM output with strict contracts
-- **Removed** recommendations (deferred to Phase 6)
+#### Architecture
+- **Deterministic Mapping**: Classification → Recommendation templates
+- **LLM Polishing**: OFF by default (token-safe)
+- **Strict Output**: action, rationale, expected_impact, risk, confidence
 
-#### LLM Integration
-- **Input Contract**: Strict JSON - no raw logs, no k6 output
-- **Output Contract**: Structured JSON with confidence, assumptions, limitations
-- **Fallback**: Rules-only mode when Ollama unavailable
+#### Recommendation Templates
+| Classification | Primary Recommendation |
+|---------------|----------------------|
+| CAPACITY_EXHAUSTION | Increase concurrency limits |
+| LATENCY_AMPLIFICATION | Investigate blocking calls |
+| ERROR_DRIVEN_COLLAPSE | Inspect error types |
+| INSTABILITY_UNDER_BURST | Add rate limiting |
+| ALREADY_DEGRADED_BASELINE | Fix baseline errors |
 
-#### Key Files Modified
-- `/app/sentinelperf/core/state.py` - New dataclasses
-- `/app/sentinelperf/analysis/root_cause.py` - LLM analyzer with contracts
-- `/app/sentinelperf/core/agent.py` - Refactored root cause node
-- `/app/sentinelperf/reports/markdown.py` - Updated report format
-- `/app/sentinelperf/reports/json_report.py` - Updated JSON structure
+#### Key Files
+- `/app/sentinelperf/analysis/recommendations.py` - Recommendation engine
+- `/app/sentinelperf/config/schema.py` - RecommendationsConfig added
+- `/app/sentinelperf/core/agent.py` - `_node_recommendations` added
 
-### Features Tested
-
-#### 1. Breaking Point Detection ✅
-- Detects first sustained violation of performance thresholds
-
-#### 2. Failure Timeline Construction ✅
-- Ordered timeline with load changes and violations
-
-#### 3. Deterministic Classification ✅
-- Categories: CAPACITY_EXHAUSTION, LATENCY_AMPLIFICATION, ERROR_DRIVEN_COLLAPSE, etc.
-
-#### 4. Root Cause Analysis ✅
-- LLM mode: Ollama/Qwen2.5 with strict input/output contracts
-- Rules mode: Fallback when LLM unavailable
-- Output: summary, primary_cause, contributing_factors, confidence, assumptions, limitations
-
-#### 5. Report Generation ✅
-- Markdown with timeline and root cause analysis
-- JSON with full structure for CI/CD
-
-### Test Commands
-```bash
-# Run analysis with Ollama (if available)
-python -m sentinelperf.cli run --env=test --verbose
-
-# Run with rules-only mode
-python -m sentinelperf.cli run --env=test --llm-mode=rules --verbose
-```
-
-### Configuration Example
+### Configuration
 ```yaml
-llm:
-  provider: ollama
-  model: qwen2.5:14b
-  timeout: 60
+recommendations:
+  enabled: true
+  polish_with_llm: false  # Token-safe: LLM OFF by default
 ```
+
+### Test Scenarios Validated
+1. **already_degraded_baseline** → Fix baseline errors
+2. **error_driven_collapse** → Circuit breaker, rate limiting
+3. **no_failure** → Increase test intensity
+
+### Phase 6 NOT Allowed
+- ❌ Auto-fix
+- ❌ Infra changes
+- ❌ Scaling actions
+- ❌ Code modification
+- ❌ Adaptive retesting
 
 ### Incorporate User Feedback
-- LLM is strictly limited to EXPLAIN, not CHANGE
-- No recommendations in Phase 5 (deferred to Phase 6)
-- Output is structured JSON, not prose
+- LLM polishing is OFF by default
+- Recommendations are guidance, not prescriptions
+- Risk/confidence/priority are NEVER changed by LLM

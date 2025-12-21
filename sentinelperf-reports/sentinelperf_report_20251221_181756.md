@@ -2,14 +2,14 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-21 18:14:26 UTC  
+**Generated:** 2025-12-21 18:17:56 UTC  
 **Status:** ⚠️ report_generation
 
 ---
 
 ## Executive Summary
 
-The system reached its **breaking point at 1 virtual users** (3.3 requests/second), where error_rate_breach exceeded acceptable thresholds.
+The system reached its **breaking point at 1 virtual users** (3.1 requests/second), where error_rate_breach exceeded acceptable thresholds.
 
 **Primary Root Cause:** Pre-existing system issues before load testing (confidence: 85%)
 
@@ -20,31 +20,31 @@ The system reached its **breaking point at 1 virtual users** (3.3 requests/secon
 | Metric | Value |
 |--------|-------|
 | Virtual Users at Break | 1 |
-| Requests/Second at Break | 3.3 |
+| Requests/Second at Break | 3.1 |
 | Failure Type | error_rate_breach |
 | Threshold Exceeded | error_rate > 0.05 |
-| Observed Value | 0.3415 |
+| Observed Value | 0.3544 |
 | Threshold Value | 0.0500 |
 | Detection Confidence | 65% |
 
 ### Observed Signals
 
 - error_rate_breach at 1 VUs
-- Observed: 0.3415, Threshold: 0.0500
-- Severity: 6.83x threshold
-- Error rate: 34.15%
-- P95 latency: 29.9ms
-- Throughput: 3.3 RPS
+- Observed: 0.3544, Threshold: 0.0500
+- Severity: 7.09x threshold
+- Error rate: 35.44%
+- P95 latency: 30.0ms
+- Throughput: 3.1 RPS
 
 ### Failure Timeline
 
 | Time | Event | Test Type | VUs | Description |
 |------|-------|-----------|-----|-------------|
 | t0 | 📈 load_change | baseline | 1 | Load increased to 1 VUs (baseline) |
-| t1 | 🔴 error_rate_breach | baseline | 1 | Error rate crossed threshold (34.1% > 5.0%) |
+| t1 | 🔴 error_rate_breach | baseline | 1 | Error rate crossed threshold (35.4% > 5.0%) |
 | t2 | 📈 load_change | stress | 15 | Load increased to 15 VUs (stress) |
-| t3 | 🔴 error_rate_breach | stress | 15 | Error rate crossed threshold (33.8% > 5.0%) |
-| t4 | 🔴 error_rate_breach | spike | 15 | Error rate crossed threshold (32.4% > 5.0%) |
+| t3 | 🔴 error_rate_breach | stress | 15 | Error rate crossed threshold (33.5% > 5.0%) |
+| t4 | 🔴 error_rate_breach | spike | 15 | Error rate crossed threshold (32.0% > 5.0%) |
 
 ## Root Cause Analysis
 
@@ -54,7 +54,7 @@ The system reached its **breaking point at 1 virtual users** (3.3 requests/secon
 
 ### Summary
 
-System showed degradation even at baseline load levels at 1 VUs (3.3 RPS)
+System showed degradation even at baseline load levels at 1 VUs (3.1 RPS)
 
 ### Primary Cause
 
@@ -87,14 +87,14 @@ To enable recommendations:
 
 | Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
 |-----------|-----|----------|----------|------------|-------------|------------|
-| baseline | 1 | 26s | 82 | 34.15% | 30ms | 3.3 RPS |
-| stress | 15 | 61s | 1797 | 33.83% | 30ms | 29.9 RPS |
-| spike | 15 | 45s | 1164 | 32.39% | 30ms | 26.4 RPS |
+| baseline | 1 | 26s | 79 | 35.44% | 30ms | 3.1 RPS |
+| stress | 15 | 61s | 1777 | 33.48% | 30ms | 29.6 RPS |
+| spike | 15 | 45s | 1176 | 31.97% | 31ms | 26.7 RPS |
 
 ## Telemetry Analysis
 
 **Source:** otel  
-**Collection Time:** 2025-12-21 18:12:15 UTC
+**Collection Time:** 2025-12-21 18:15:45 UTC
 
 ### Endpoints Analyzed
 

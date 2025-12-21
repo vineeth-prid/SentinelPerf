@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "generated_at": "2025-12-21T18:14:26.409967",
+  "generated_at": "2025-12-21T18:17:56.649201",
   "status": "success",
   "target": {
     "url": "http://localhost:8765",
     "environment": "test"
   },
   "execution": {
-    "started_at": "2025-12-21T18:12:15.457062",
+    "started_at": "2025-12-21T18:15:45.218791",
     "completed_at": null,
     "duration_seconds": null,
     "phase": "report_generation",
@@ -17,7 +17,7 @@
     "available": true,
     "source": "otel",
     "endpoints_analyzed": 7,
-    "collection_timestamp": "2025-12-21T18:12:15.458791"
+    "collection_timestamp": "2025-12-21T18:15:45.220512"
   },
   "breaking_point": {
     "detected": true,
@@ -31,17 +31,17 @@
         "test_type": "baseline",
         "vus": 1,
         "metrics": {
-          "rps": 3.265681188713152
+          "rps": 3.129204514922255
         }
       },
       {
         "timestamp": "t1",
         "event_type": "error_rate_breach",
-        "description": "Error rate crossed threshold (34.1% > 5.0%)",
+        "description": "Error rate crossed threshold (35.4% > 5.0%)",
         "test_type": "baseline",
         "vus": 1,
         "metrics": {
-          "error_rate": 0.34146341463414637,
+          "error_rate": 0.35443037974683544,
           "threshold": 0.05
         }
       },
@@ -52,51 +52,51 @@
         "test_type": "stress",
         "vus": 15,
         "metrics": {
-          "rps": 29.917708754364124
+          "rps": 29.591870758786122
         }
       },
       {
         "timestamp": "t3",
         "event_type": "error_rate_breach",
-        "description": "Error rate crossed threshold (33.8% > 5.0%)",
+        "description": "Error rate crossed threshold (33.5% > 5.0%)",
         "test_type": "stress",
         "vus": 15,
         "metrics": {
-          "error_rate": 0.33834168057874237,
+          "error_rate": 0.3348339898705684,
           "threshold": 0.05
         }
       },
       {
         "timestamp": "t4",
         "event_type": "error_rate_breach",
-        "description": "Error rate crossed threshold (32.4% > 5.0%)",
+        "description": "Error rate crossed threshold (32.0% > 5.0%)",
         "test_type": "spike",
         "vus": 15,
         "metrics": {
-          "error_rate": 0.3238831615120275,
+          "error_rate": 0.3197278911564626,
           "threshold": 0.05
         }
       }
     ],
     "vus_at_break": 1,
-    "rps_at_break": 3.265681188713152,
+    "rps_at_break": 3.129204514922255,
     "failure_type": "error_rate_breach",
     "threshold_exceeded": "error_rate > 0.05",
-    "observed_value": 0.34146341463414637,
+    "observed_value": 0.35443037974683544,
     "threshold_value": 0.05,
     "confidence": 0.65,
     "signals": [
       "error_rate_breach at 1 VUs",
-      "Observed: 0.3415, Threshold: 0.0500",
-      "Severity: 6.83x threshold",
-      "Error rate: 34.15%",
-      "P95 latency: 29.9ms",
-      "Throughput: 3.3 RPS"
+      "Observed: 0.3544, Threshold: 0.0500",
+      "Severity: 7.09x threshold",
+      "Error rate: 35.44%",
+      "P95 latency: 30.0ms",
+      "Throughput: 3.1 RPS"
     ]
   },
   "root_cause": {
     "analyzed": true,
-    "root_cause_summary": "System showed degradation even at baseline load levels at 1 VUs (3.3 RPS)",
+    "root_cause_summary": "System showed degradation even at baseline load levels at 1 VUs (3.1 RPS)",
     "primary_cause": "Pre-existing system issues before load testing",
     "contributing_factors": [
       "Error rate exceeded threshold"
@@ -119,49 +119,49 @@
       "test_type": "baseline",
       "vus": 1,
       "duration": "26s",
-      "total_requests": 82,
-      "successful_requests": 54,
+      "total_requests": 79,
+      "successful_requests": 51,
       "failed_requests": 28,
-      "error_rate": 0.34146341463414637,
+      "error_rate": 0.35443037974683544,
       "latency": {
-        "p50_ms": 21.886296,
-        "p95_ms": 29.876393500000002,
-        "p99_ms": 30.94342634
+        "p50_ms": 21.95775,
+        "p95_ms": 29.981155,
+        "p99_ms": 30.9101108
       },
-      "throughput_rps": 3.265681188713152,
-      "timestamp": "2025-12-21T18:14:26.408209"
+      "throughput_rps": 3.129204514922255,
+      "timestamp": "2025-12-21T18:17:56.427761"
     },
     {
       "test_type": "stress",
       "vus": 15,
       "duration": "61s",
-      "total_requests": 1797,
-      "successful_requests": 1189,
-      "failed_requests": 608,
-      "error_rate": 0.33834168057874237,
+      "total_requests": 1777,
+      "successful_requests": 1182,
+      "failed_requests": 595,
+      "error_rate": 0.3348339898705684,
       "latency": {
-        "p50_ms": 21.81449,
-        "p95_ms": 30.261965999999997,
-        "p99_ms": 31.15317704
+        "p50_ms": 22.33492,
+        "p95_ms": 30.481255599999997,
+        "p99_ms": 31.20511168
       },
-      "throughput_rps": 29.917708754364124,
-      "timestamp": "2025-12-21T18:14:26.408213"
+      "throughput_rps": 29.591870758786122,
+      "timestamp": "2025-12-21T18:17:56.427765"
     },
     {
       "test_type": "spike",
       "vus": 15,
       "duration": "45s",
-      "total_requests": 1164,
-      "successful_requests": 787,
-      "failed_requests": 377,
-      "error_rate": 0.3238831615120275,
+      "total_requests": 1176,
+      "successful_requests": 800,
+      "failed_requests": 376,
+      "error_rate": 0.3197278911564626,
       "latency": {
-        "p50_ms": 22.267950499999998,
-        "p95_ms": 30.4339531,
-        "p99_ms": 31.09200123
+        "p50_ms": 22.3367755,
+        "p95_ms": 30.576999999999998,
+        "p99_ms": 31.28223625
       },
-      "throughput_rps": 26.445074368130324,
-      "timestamp": "2025-12-21T18:14:26.408220"
+      "throughput_rps": 26.692042473683987,
+      "timestamp": "2025-12-21T18:17:56.427776"
     }
   ],
   "ci_cd": {

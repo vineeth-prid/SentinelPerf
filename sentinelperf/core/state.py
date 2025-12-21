@@ -15,6 +15,7 @@ class AgentPhase(str, Enum):
     RESULTS_COLLECTION = "results_collection"
     BREAKING_POINT_DETECTION = "breaking_point_detection"
     ROOT_CAUSE_ANALYSIS = "root_cause_analysis"
+    RECOMMENDATIONS = "recommendations"
     REPORT_GENERATION = "report_generation"
     COMPLETE = "complete"
     ERROR = "error"

@@ -36,9 +36,9 @@ class LoadState:
 state = LoadState()
 
 # Configuration for degradation simulation
-# SCENARIO: CAPACITY EXHAUSTION - Throughput plateau, latency up, minimal errors
-MAX_HEALTHY_CONCURRENT = 5  # Low threshold
-ERROR_THRESHOLD_CONCURRENT = 100  # Very high - almost no errors
+# SCENARIO: CAPACITY EXHAUSTION - Throughput plateau, latency up, NO errors
+MAX_HEALTHY_CONCURRENT = 3  # Low threshold for latency
+ERROR_THRESHOLD_CONCURRENT = 1000  # Effectively no errors
 BASE_LATENCY_MS = 30  # Base latency
 
 

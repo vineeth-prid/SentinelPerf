@@ -105,6 +105,7 @@ class EnvironmentConfig(BaseModel):
     telemetry: TelemetryConfig = Field(default_factory=TelemetryConfig)
     load: LoadConfig = Field(default_factory=LoadConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    recommendations: RecommendationsConfig = Field(default_factory=RecommendationsConfig)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 

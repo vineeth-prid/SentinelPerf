@@ -313,12 +313,12 @@ class TestGenerator:
         Purpose: Test system resilience to sudden traffic spikes.
         """
         stages = [
-            TestStage(duration="10s", target=baseline_vus),   # Warmup
-            TestStage(duration="5s", target=spike_vus),       # Spike up
+            TestStage(duration="5s", target=baseline_vus),   # Warmup (shorter)
+            TestStage(duration="3s", target=spike_vus),      # Spike up
             TestStage(duration=spike_duration, target=spike_vus),  # Hold spike
-            TestStage(duration="5s", target=baseline_vus),    # Spike down
-            TestStage(duration="20s", target=baseline_vus),   # Recovery
-            TestStage(duration="5s", target=0),               # Ramp down
+            TestStage(duration="3s", target=baseline_vus),   # Spike down
+            TestStage(duration="10s", target=baseline_vus),  # Recovery (shorter)
+            TestStage(duration="3s", target=0),              # Ramp down
         ]
         
         # Lenient thresholds during spike

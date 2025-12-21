@@ -74,6 +74,13 @@ class SentinelPerfAgent:
         # Initialize components
         self.baseline_inference = BaselineInference(top_n=10)
         self._baseline: Optional[BaselineBehavior] = None
+        self._generated_scripts: List[TestScript] = []
+        
+        # Initialize k6 executor
+        self.k6_executor = K6Executor(
+            output_dir=self.output_dir / "k6-scripts",
+            use_docker=False,  # Default to local k6
+        )
         
         # Build the agent graph
         self.graph = self._build_graph()

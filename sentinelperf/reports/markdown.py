@@ -208,29 +208,15 @@ Root cause analysis was not performed."""
 {limitations}"""
 
     def _recommendations_section(self, state: AgentState) -> str:
-        """Recommendations section"""
-        if not state.root_cause or not state.root_cause.recommendations:
-            return """## Recommendations
+        """Recommendations section - deferred to Phase 6"""
+        return """## Recommendations
 
-No recommendations available."""
-        
-        recs = state.root_cause.recommendations
-        
-        rec_items = []
-        for i, rec in enumerate(recs, 1):
-            confidence = rec.get('confidence', 0)
-            priority = rec.get('priority', 5)
-            impact = rec.get('estimated_impact', 'Unknown')
-            
-            rec_items.append(f"""### {i}. {rec.get('action', 'Unknown action')}
+*Recommendations will be provided in Phase 6 after root cause validation.*
 
-**Priority:** {'🔴' if priority == 1 else '🟡' if priority <= 3 else '🟢'} {priority}  
-**Confidence:** {confidence:.0%}  
-**Expected Impact:** {impact}
-
-{rec.get('rationale', 'No rationale provided')}""")
-        
-        return "## Recommendations\n\n" + "\n\n".join(rec_items)
+To enable recommendations:
+1. Verify the root cause analysis is accurate
+2. Enable recommendations in configuration
+3. Run analysis with `--enable-recommendations` flag"""
 
     def _load_test_results_section(self, state: AgentState) -> str:
         """Load test results table"""

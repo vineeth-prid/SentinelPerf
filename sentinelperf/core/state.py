@@ -62,14 +62,48 @@ class BreakingPoint:
 
 
 @dataclass
-class RootCauseAnalysis:
-    """Root cause analysis results"""
-    primary_cause: str
-    confidence: float  # 0.0 to 1.0
+class DeterministicFailureAnalysis:
+    """
+    Deterministic failure analysis results (rules-based).
+    
+    This is NOT root cause analysis - it's purely rule-based classification
+    and pattern detection. Root cause analysis requires LLM reasoning.
+    """
+    failure_category: str  # From FailureCategory enum
+    category_confidence: float  # 0.0 to 1.0
+    classification_rationale: List[str] = field(default_factory=list)
     supporting_evidence: List[str] = field(default_factory=list)
-    reasoning_steps: List[str] = field(default_factory=list)
-    recommendations: List[Dict[str, Any]] = field(default_factory=list)
-    llm_mode: str = "unknown"  # ollama, rules, mock
+
+
+@dataclass
+class RootCauseAnalysis:
+    """
+    LLM-assisted root cause analysis results.
+    
+    This is the output from the LLM reasoning layer which explains
+    WHY the failure occurred based on the deterministic analysis.
+    
+    The LLM is constrained to:
+    - Explain why the classification makes sense
+    - Connect timeline events causally
+    - Translate signals into human reasoning
+    - Assign explanation confidence
+    
+    The LLM is NOT allowed to:
+    - Change the classification
+    - Invent new metrics
+    - Override breaking point
+    - Suggest fixes (that's Phase 6)
+    """
+    root_cause_summary: str
+    primary_cause: str
+    contributing_factors: List[str] = field(default_factory=list)
+    confidence: float = 0.0  # 0.0 to 1.0
+    assumptions: List[str] = field(default_factory=list)
+    limitations: List[str] = field(default_factory=list)
+    llm_mode: str = "rules"  # ollama, rules, mock
+    llm_model: str = ""
+    llm_latency_ms: float = 0.0
 
 
 @dataclass

@@ -208,15 +208,54 @@ Root cause analysis was not performed."""
 {limitations}"""
 
     def _recommendations_section(self, state: AgentState) -> str:
-        """Recommendations section - deferred to Phase 6"""
-        return """## Recommendations
+        """Recommendations section"""
+        if not state.recommendations:
+            return """## Recommendations
 
-*Recommendations will be provided in Phase 6 after root cause validation.*
+No recommendations generated."""
+        
+        recs_data = state.recommendations
+        recs = recs_data.get("recommendations", [])
+        limitations = recs_data.get("limitations", [])
+        polished = recs_data.get("polished_by_llm", False)
+        
+        if not recs:
+            return """## Recommendations
 
-To enable recommendations:
-1. Verify the root cause analysis is accurate
-2. Enable recommendations in configuration
-3. Run analysis with `--enable-recommendations` flag"""
+No recommendations available for this classification."""
+        
+        # Header
+        polish_note = " *(polished by LLM)*" if polished else ""
+        sections = [f"## Recommendations{polish_note}", ""]
+        
+        # Recommendations
+        for i, rec in enumerate(recs, 1):
+            risk = rec.get("risk", "MEDIUM")
+            confidence = rec.get("confidence", 0)
+            priority = rec.get("priority", 5)
+            
+            risk_emoji = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🔴"}.get(risk, "⚪")
+            priority_emoji = "🔴" if priority == 1 else "🟡" if priority <= 3 else "🟢"
+            
+            sections.append(f"""### {i}. {rec.get('action', 'Unknown action')}
+
+**Priority:** {priority_emoji} P{priority}  
+**Risk:** {risk_emoji} {risk}  
+**Confidence:** {confidence:.0%}
+
+**Rationale:** {rec.get('rationale', 'No rationale provided')}
+
+**Expected Impact:** {rec.get('expected_impact', 'Unknown')}
+""")
+        
+        # Limitations
+        if limitations:
+            sections.append("### Limitations")
+            sections.append("")
+            for lim in limitations:
+                sections.append(f"- {lim}")
+        
+        return "\n".join(sections)
 
     def _load_test_results_section(self, state: AgentState) -> str:
         """Load test results table"""

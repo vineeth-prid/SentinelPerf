@@ -197,7 +197,18 @@ class BaselineInference:
     - Top N endpoints by traffic
     - Baseline latency distribution (p50/p95/p99)
     - Approximate baseline RPS / throughput
+    - Confidence score with data quality flags
     """
+    
+    # Thresholds for confidence assessment
+    SAMPLE_THRESHOLD_HIGH = 1000
+    SAMPLE_THRESHOLD_MEDIUM = 100
+    SAMPLE_THRESHOLD_LOW = 30
+    TIME_WINDOW_THRESHOLD_HIGH = 60  # minutes
+    TIME_WINDOW_THRESHOLD_MEDIUM = 5
+    TIME_WINDOW_THRESHOLD_LOW = 1
+    SKEW_THRESHOLD = 0.5  # Top endpoint > 50% is skewed
+    HIGH_ERROR_RATE_THRESHOLD = 0.1  # 10%
     
     def __init__(self, top_n: int = 10):
         self.top_n = top_n
@@ -210,11 +221,11 @@ class BaselineInference:
             telemetry: Aggregated telemetry data
             
         Returns:
-            BaselineBehavior with inferred metrics
+            BaselineBehavior with inferred metrics and confidence assessment
         """
         # Calculate time range
         duration_seconds = (telemetry.collection_end - telemetry.collection_start).total_seconds()
-        duration_minutes = duration_seconds / 60 if duration_seconds > 0 else 1
+        duration_minutes = duration_seconds / 60 if duration_seconds > 0 else 0
         
         # Aggregate global metrics
         total_requests = sum(ep.request_count for ep in telemetry.endpoints)
@@ -237,6 +248,17 @@ class BaselineInference:
         # Get top N endpoints
         top_endpoints = self._get_top_endpoints(telemetry.endpoints, total_requests)
         
+        # Calculate confidence score
+        confidence = self._assess_confidence(
+            total_requests=total_requests,
+            duration_minutes=duration_minutes,
+            endpoints=telemetry.endpoints,
+            top_endpoints=top_endpoints,
+            global_error_rate=global_error_rate,
+            has_latency=len(all_latencies) > 0,
+            has_patterns=len(telemetry.traffic_patterns) > 0,
+        )
+        
         return BaselineBehavior(
             analysis_start=telemetry.collection_start,
             analysis_end=telemetry.collection_end,
@@ -252,6 +274,96 @@ class BaselineInference:
             top_endpoints=top_endpoints,
             traffic_patterns=telemetry.traffic_patterns,
             telemetry_source=telemetry.source,
+            confidence=confidence,
+        )
+    
+    def _assess_confidence(
+        self,
+        total_requests: int,
+        duration_minutes: float,
+        endpoints: List[EndpointMetrics],
+        top_endpoints: List[EndpointBaseline],
+        global_error_rate: float,
+        has_latency: bool,
+        has_patterns: bool,
+    ) -> BaselineConfidence:
+        """
+        Assess confidence in baseline data.
+        
+        Returns confidence score (0-1) with data quality flags.
+        """
+        flags: Set[DataQualityFlag] = set()
+        score = 1.0  # Start at 100%, deduct for issues
+        
+        # --- Sample size assessment ---
+        if total_requests < self.SAMPLE_THRESHOLD_LOW:
+            flags.add(DataQualityFlag.VERY_LOW_SAMPLE_SIZE)
+            score -= 0.4
+        elif total_requests < self.SAMPLE_THRESHOLD_MEDIUM:
+            flags.add(DataQualityFlag.LOW_SAMPLE_SIZE)
+            score -= 0.2
+        
+        # --- Time window assessment ---
+        if duration_minutes < self.TIME_WINDOW_THRESHOLD_LOW:
+            flags.add(DataQualityFlag.VERY_SHORT_TIME_WINDOW)
+            score -= 0.3
+        elif duration_minutes < self.TIME_WINDOW_THRESHOLD_MEDIUM:
+            flags.add(DataQualityFlag.SHORT_TIME_WINDOW)
+            score -= 0.15
+        
+        # --- Endpoint distribution assessment ---
+        endpoint_count = len(endpoints)
+        top_endpoint_share = 0.0
+        
+        if endpoint_count == 0:
+            score -= 0.3
+        elif endpoint_count == 1:
+            flags.add(DataQualityFlag.SINGLE_ENDPOINT)
+            score -= 0.1
+        else:
+            # Check for skewed distribution
+            if top_endpoints:
+                top_endpoint_share = top_endpoints[0].traffic_share
+                if top_endpoint_share > self.SKEW_THRESHOLD:
+                    flags.add(DataQualityFlag.SKEWED_ENDPOINT_DISTRIBUTION)
+                    score -= 0.1
+        
+        # --- Error rate assessment ---
+        if global_error_rate > self.HIGH_ERROR_RATE_THRESHOLD:
+            flags.add(DataQualityFlag.HIGH_ERROR_RATE)
+            score -= 0.1
+        
+        # --- Data completeness ---
+        if not has_latency:
+            flags.add(DataQualityFlag.MISSING_LATENCY_DATA)
+            score -= 0.15
+        
+        if not has_patterns:
+            flags.add(DataQualityFlag.NO_TRAFFIC_PATTERNS)
+            # Don't deduct much - patterns are optional
+            score -= 0.05
+        
+        # Clamp score
+        score = max(0.0, min(1.0, score))
+        
+        # Determine level
+        if score >= 0.8:
+            level = "HIGH"
+        elif score >= 0.6:
+            level = "MEDIUM"
+        elif score >= 0.4:
+            level = "LOW"
+        else:
+            level = "VERY_LOW"
+        
+        return BaselineConfidence(
+            score=score,
+            level=level,
+            flags=flags,
+            sample_count=total_requests,
+            time_window_minutes=duration_minutes,
+            endpoint_count=endpoint_count,
+            top_endpoint_share=top_endpoint_share,
         )
     
     def _collect_latency_estimates(self, endpoints: List[EndpointMetrics]) -> List[float]:

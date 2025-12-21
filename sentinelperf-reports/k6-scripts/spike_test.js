@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: spike_test
 // Type: spike
 // Target: http://localhost:8765
-// Generated: 2025-12-21T19:48:27.848222Z
+// Generated: 2025-12-21T19:52:20.210101Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -19,8 +19,8 @@ const latencyTrend = new Trend('sentinelperf_latency');
 export const options = {
   stages: [
     { duration: '5s', target: 2 },
-    { duration: '3s', target: 15 },
-    { duration: '20s', target: 15 },
+    { duration: '3s', target: 30 },
+    { duration: '20s', target: 30 },
     { duration: '3s', target: 2 },
     { duration: '10s', target: 2 },
     { duration: '3s', target: 0 }

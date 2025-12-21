@@ -77,13 +77,17 @@ def cmd_run(args: argparse.Namespace) -> int:
     config_path = Path(args.config)
     
     if not config_path.exists():
-        print(f"Error: Configuration file not found: {config_path}", file=sys.stderr)
+        print(f"\033[91mError:\033[0m Configuration file not found: {config_path}", file=sys.stderr)
+        print(f"  Create a sentinelperf.yaml file or specify path with --config", file=sys.stderr)
         return 1
     
     try:
         config = load_config(config_path, args.env)
+    except ValueError as e:
+        print(f"\033[91mConfiguration Error:\033[0m {e}", file=sys.stderr)
+        return 1
     except Exception as e:
-        print(f"Error loading configuration: {e}", file=sys.stderr)
+        print(f"\033[91mError:\033[0m Failed to load configuration: {e}", file=sys.stderr)
         return 1
     
     if args.verbose:

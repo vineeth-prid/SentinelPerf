@@ -450,27 +450,6 @@ class SentinelPerfAgent:
                 print(f"    - {script.test_type.value}: {script.name} ({len(script.stages)} stages)")
         
         return state
-                "script": spike_test,
-                "endpoints": endpoints,
-                "baseline_driven": True,
-            },
-            {
-                "type": "adaptive",
-                "name": adaptive_test.name,
-                "vus": max_vus,
-                "duration": f"{(max_vus // self.config.load.adaptive_step) * 60}s",
-                "script": adaptive_test,
-                "endpoints": endpoints,
-                "baseline_driven": True,
-            },
-        ]
-        
-        if self.verbose:
-            print(f"  Generated {len(state['generated_tests'])} test configurations")
-            for test in state["generated_tests"]:
-                print(f"    - {test['type']}: {test['vus']} VUs, {test['duration']}")
-        
-        return state
     
     def _get_load_plan_input(self) -> Dict[str, Any]:
         """Get load plan input from baseline or defaults"""
@@ -509,38 +488,82 @@ class SentinelPerfAgent:
         """
         Execute load tests using k6.
         
-        Currently mocked - will be implemented in next phase.
+        Runs actual k6 tests if available, otherwise creates mock results.
         """
         state["phase"] = AgentPhase.LOAD_EXECUTION.value
         
         if self.verbose:
             print("[3/7] Executing load tests...")
-            print("  (Load execution is mocked - k6 integration pending)")
         
-        # Create mocked results based on generated tests
-        load_results = []
-        for test in state["generated_tests"]:
-            # Mock result that simulates data flow
-            result = LoadTestResult(
-                test_type=test["type"],
-                vus=test["vus"],
-                duration=test["duration"],
-                # Mock metrics based on baseline if available
-                total_requests=test["vus"] * 100,  # Simulated
-                successful_requests=test["vus"] * 95,
-                failed_requests=test["vus"] * 5,
-                error_rate=0.05,
-                latency_p50_ms=self._baseline.global_latency_p50 if self._baseline else 50,
-                latency_p95_ms=self._baseline.global_latency_p95 if self._baseline else 200,
-                latency_p99_ms=self._baseline.global_latency_p99 if self._baseline else 500,
-                throughput_rps=test["vus"] * 10,  # Simulated
+        # Check if k6 is available
+        k6_available = self.k6_executor.check_available()
+        
+        if k6_available and self._generated_scripts:
+            if self.verbose:
+                k6_version = self.k6_executor.get_version()
+                print(f"  k6 available: {k6_version}")
+                print(f"  Running {len(self._generated_scripts)} tests...")
+            
+            # Execute tests with k6
+            k6_results = self.k6_executor.execute_all(
+                self._generated_scripts,
+                timeout_per_test=300,
+                verbose=self.verbose,
             )
-            load_results.append(result)
-        
-        state["load_results"] = load_results
-        
-        if self.verbose:
-            print(f"  Created {len(load_results)} mocked test results")
+            
+            # Convert K6Result to LoadTestResult
+            load_results = []
+            for k6_result in k6_results:
+                load_result = LoadTestResult(
+                    test_type=k6_result.test_type,
+                    vus=k6_result.metrics.vus_max,
+                    duration=f"{k6_result.duration_seconds:.0f}s",
+                    total_requests=k6_result.metrics.total_requests,
+                    successful_requests=k6_result.metrics.total_requests - k6_result.metrics.failed_requests,
+                    failed_requests=k6_result.metrics.failed_requests,
+                    error_rate=k6_result.metrics.error_rate,
+                    latency_p50_ms=k6_result.metrics.latency_p50,
+                    latency_p95_ms=k6_result.metrics.latency_p95,
+                    latency_p99_ms=k6_result.metrics.latency_p99,
+                    throughput_rps=k6_result.metrics.requests_per_second,
+                    raw_output=k6_result.raw_stdout[:1000] if k6_result.raw_stdout else "",
+                )
+                load_results.append(load_result)
+            
+            state["load_results"] = load_results
+            
+            if self.verbose:
+                print(f"  Completed {len(load_results)} tests")
+        else:
+            # k6 not available - create mock results
+            if self.verbose:
+                if not k6_available:
+                    print("  ⚠ k6 not available - using mock results")
+                    print("  Install k6: https://k6.io/docs/getting-started/installation/")
+                else:
+                    print("  ⚠ No test scripts generated - using mock results")
+            
+            load_results = []
+            for test in state.get("generated_tests", []):
+                # Mock result based on baseline
+                vus = test.get("vus", 10)
+                result = LoadTestResult(
+                    test_type=test.get("type", "unknown"),
+                    vus=vus,
+                    duration="30s",
+                    total_requests=vus * 100,
+                    successful_requests=vus * 95,
+                    failed_requests=vus * 5,
+                    error_rate=0.05,
+                    latency_p50_ms=self._baseline.global_latency_p50 if self._baseline else 50,
+                    latency_p95_ms=self._baseline.global_latency_p95 if self._baseline else 200,
+                    latency_p99_ms=self._baseline.global_latency_p99 if self._baseline else 500,
+                    throughput_rps=vus * 10,
+                    raw_output="[MOCK] k6 not available",
+                )
+                load_results.append(result)
+            
+            state["load_results"] = load_results
         
         return state
     

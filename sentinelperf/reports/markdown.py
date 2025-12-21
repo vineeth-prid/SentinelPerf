@@ -90,15 +90,27 @@ class MarkdownReporter:
         return "\n".join(summary_lines)
     
     def _breaking_point_section(self, state: AgentState) -> str:
-        """Breaking point details"""
+        """Breaking point details with classification and timeline"""
+        sections = []
+        
+        # Classification header
+        category = state.failure_category or "no_failure"
+        category_display = category.replace("_", " ").title()
+        
         if not state.breaking_point or state.breaking_point.vus_at_break == 0:
-            return """## Breaking Point Analysis
+            sections.append(f"""## Breaking Point Analysis
 
-No breaking point detected within tested parameters."""
+**Classification:** {category_display}
+
+No breaking point detected within tested parameters.""")
+            return "\n".join(sections)
         
         bp = state.breaking_point
         
-        return f"""## Breaking Point Analysis
+        # Main breaking point section
+        sections.append(f"""## Breaking Point Analysis
+
+**Classification:** {category_display}
 
 | Metric | Value |
 |--------|-------|
@@ -112,7 +124,37 @@ No breaking point detected within tested parameters."""
 
 ### Observed Signals
 
-{chr(10).join(['- ' + s for s in bp.signals]) if bp.signals else '- No additional signals recorded'}"""
+{chr(10).join(['- ' + s for s in bp.signals]) if bp.signals else '- No additional signals recorded'}""")
+        
+        # Add failure timeline if available
+        if state.failure_timeline:
+            timeline_lines = ["", "### Failure Timeline", ""]
+            timeline_lines.append("| Time | Event | Test Type | VUs | Description |")
+            timeline_lines.append("|------|-------|-----------|-----|-------------|")
+            
+            for event in state.failure_timeline:
+                event_type = event.get("event_type", "unknown")
+                test_type = event.get("test_type", "-")
+                vus = event.get("vus", "-")
+                description = event.get("description", "-")
+                timestamp = event.get("timestamp", "-")
+                
+                # Add emoji based on event type
+                type_emoji = {
+                    "load_change": "📈",
+                    "error_rate_breach": "🔴",
+                    "latency_degradation": "🟠",
+                    "throughput_plateau": "🟡",
+                    "saturation": "⚠️",
+                }.get(event_type, "•")
+                
+                timeline_lines.append(
+                    f"| {timestamp} | {type_emoji} {event_type} | {test_type} | {vus} | {description[:50]}{'...' if len(description) > 50 else ''} |"
+                )
+            
+            sections.append("\n".join(timeline_lines))
+        
+        return "\n".join(sections)
 
     def _root_cause_section(self, state: AgentState) -> str:
         """Root cause analysis details"""

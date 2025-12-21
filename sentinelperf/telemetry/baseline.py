@@ -151,6 +151,7 @@ class BaselineBehavior:
                 }
                 for p in self.traffic_patterns
             ],
+            "confidence": self.confidence.to_dict() if self.confidence else None,
             "recommended_initial_vus": self._calculate_initial_vus(),
             "recommended_max_vus": self._calculate_max_vus(),
         }
@@ -170,6 +171,20 @@ class BaselineBehavior:
             max_vus = 100  # Default
         
         return max(10, min(max_vus, 500))  # Between 10 and 500
+    
+    def get_confidence_summary(self) -> str:
+        """Get human-readable confidence summary"""
+        if not self.confidence:
+            return "Confidence: UNKNOWN (not assessed)"
+        
+        c = self.confidence
+        flags_str = ", ".join(f.value for f in c.flags) if c.flags else "none"
+        
+        return (
+            f"Baseline confidence: {c.level} "
+            f"({c.sample_count} spans, {c.time_window_minutes:.1f} min window) "
+            f"[flags: {flags_str}]"
+        )
 
 
 class BaselineInference:

@@ -618,7 +618,9 @@ class SentinelPerfAgent:
             print(f"  Markdown report: {md_path}")
             print(f"  JSON report: {json_path}")
         
-        state.mark_complete()
+        # Mark complete
+        state["phase"] = AgentPhase.COMPLETE.value
+        state["completed_at"] = datetime.utcnow().isoformat()
         
         return state
     

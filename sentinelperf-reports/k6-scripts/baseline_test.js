@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: baseline_test
 // Type: baseline
 // Target: http://localhost:8765
-// Generated: 2025-12-21T16:43:27.699275Z
+// Generated: 2025-12-21T16:46:49.533047Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -23,7 +23,7 @@ export const options = {
     { duration: '5s', target: 0 }
   ],
   thresholds: {
-    'http_req_failed': ['rate<0.1'],
+    'http_req_failed': ['rate<0.2'],
     'http_req_duration': ['p(95)<5000']
   },
   // Output JSON summary

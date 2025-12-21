@@ -799,12 +799,88 @@ class SentinelPerfAgent:
         
         return evidence
     
+    def _node_recommendations(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate recommendations based on failure classification.
+        
+        Phase 6 Scope:
+        - Deterministic recommendations from templates
+        - Optional LLM polishing (rephrasing only)
+        
+        NOT allowed:
+        - Auto-fix
+        - Infra changes
+        - Scaling actions
+        - Code modification
+        """
+        state["phase"] = AgentPhase.RECOMMENDATIONS.value
+        
+        if self.verbose:
+            print("[7/8] Generating recommendations...")
+        
+        # Check if recommendations are enabled
+        rec_config = self.config.recommendations
+        if not rec_config.enabled:
+            if self.verbose:
+                print("  Recommendations disabled in config")
+            state["recommendations"] = {
+                "recommendations": [],
+                "limitations": ["Recommendations disabled in configuration"],
+                "polished_by_llm": False,
+            }
+            return state
+        
+        # Get failure classification
+        failure_category = state.get("failure_category", "no_failure")
+        
+        # Get breaking point for context
+        breaking_point = state.get("breaking_point")
+        breaking_point_dict = None
+        if breaking_point:
+            breaking_point_dict = {
+                "vus_at_break": breaking_point.vus_at_break,
+                "rps_at_break": breaking_point.rps_at_break,
+                "failure_type": breaking_point.failure_type,
+                "confidence": breaking_point.confidence,
+            }
+        
+        # Get root cause confidence
+        root_cause = state.get("root_cause")
+        root_cause_confidence = root_cause.confidence if root_cause else 0.5
+        
+        # Generate recommendations
+        from sentinelperf.analysis.recommendations import generate_recommendations
+        
+        result = generate_recommendations(
+            failure_classification=failure_category,
+            breaking_point=breaking_point_dict,
+            root_cause_confidence=root_cause_confidence,
+            llm_config=self.config.llm if rec_config.polish_with_llm else None,
+            polish_with_llm=rec_config.polish_with_llm,
+            verbose=self.verbose,
+        )
+        
+        # Limit number of recommendations
+        result.recommendations = result.recommendations[:rec_config.max_recommendations]
+        
+        # Store result
+        state["recommendations"] = result.to_dict()
+        
+        if self.verbose:
+            print(f"  Generated {len(result.recommendations)} recommendations")
+            if result.polished_by_llm:
+                print(f"  Polished by LLM ({result.llm_model})")
+            for i, rec in enumerate(result.recommendations, 1):
+                print(f"    {i}. {rec.action[:60]}...")
+        
+        return state
+    
     def _node_report_generation(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Generate output reports"""
         state["phase"] = AgentPhase.REPORT_GENERATION.value
         
         if self.verbose:
-            print("[7/7] Generating reports...")
+            print("[8/8] Generating reports...")
         
         # Convert to AgentState for report generation
         agent_state = self._dict_to_agent_state(state)

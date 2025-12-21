@@ -98,6 +98,8 @@ class AgentState:
     
     # Breaking point analysis
     breaking_point: Optional[BreakingPoint] = None
+    failure_timeline: List[Dict[str, Any]] = field(default_factory=list)
+    failure_category: Optional[str] = None
     
     # Root cause analysis
     root_cause: Optional[RootCauseAnalysis] = None

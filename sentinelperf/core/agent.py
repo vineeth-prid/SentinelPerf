@@ -898,8 +898,6 @@ class SentinelPerfAgent:
             confidence = min(confidence * 1.1, 0.95)
         
         return min(confidence, 0.95)
-        
-        return state
     
     def _node_report_generation(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Generate output reports"""

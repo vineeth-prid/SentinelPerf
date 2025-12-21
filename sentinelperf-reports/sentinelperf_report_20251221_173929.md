@@ -2,16 +2,16 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-21 17:25:23 UTC  
+**Generated:** 2025-12-21 17:39:29 UTC  
 **Status:** ⚠️ report_generation
 
 ---
 
 ## Executive Summary
 
-The system reached its **breaking point at 1 virtual users** (3.1 requests/second), where error_rate_breach exceeded acceptable thresholds.
+The system reached its **breaking point at 1 virtual users** (3.2 requests/second), where error_rate_breach exceeded acceptable thresholds.
 
-**Primary Root Cause:** Baseline performance already degraded before load test (at 1 VUs, 3.1 RPS) (confidence: 65%)
+**Primary Root Cause:** Baseline performance already degraded before load test (at 1 VUs, 3.2 RPS) (confidence: 65%)
 
 ## Breaking Point Analysis
 
@@ -20,31 +20,31 @@ The system reached its **breaking point at 1 virtual users** (3.1 requests/secon
 | Metric | Value |
 |--------|-------|
 | Virtual Users at Break | 1 |
-| Requests/Second at Break | 3.1 |
+| Requests/Second at Break | 3.2 |
 | Failure Type | error_rate_breach |
-| Threshold Exceeded | error_rate > 0.2 |
-| Observed Value | 0.3387 |
-| Threshold Value | 0.2000 |
-| Detection Confidence | 60% |
+| Threshold Exceeded | error_rate > 0.1 |
+| Observed Value | 0.3625 |
+| Threshold Value | 0.1000 |
+| Detection Confidence | 65% |
 
 ### Observed Signals
 
 - error_rate_breach at 1 VUs
-- Observed: 0.3387, Threshold: 0.2000
-- Severity: 1.69x threshold
-- Error rate: 33.87%
-- P95 latency: 29.9ms
-- Throughput: 3.1 RPS
+- Observed: 0.3625, Threshold: 0.1000
+- Severity: 3.62x threshold
+- Error rate: 36.25%
+- P95 latency: 26.0ms
+- Throughput: 3.2 RPS
 
 ### Failure Timeline
 
 | Time | Event | Test Type | VUs | Description |
 |------|-------|-----------|-----|-------------|
 | t0 | 📈 load_change | baseline | 1 | Load increased to 1 VUs (baseline) |
-| t1 | 🔴 error_rate_breach | baseline | 1 | Error rate crossed threshold (33.9% > 20.0%) |
-| t2 | 📈 load_change | stress | 5 | Load increased to 5 VUs (stress) |
-| t3 | 🔴 error_rate_breach | stress | 5 | Error rate crossed threshold (36.0% > 20.0%) |
-| t4 | 🔴 error_rate_breach | spike | 5 | Error rate crossed threshold (36.1% > 20.0%) |
+| t1 | 🔴 error_rate_breach | baseline | 1 | Error rate crossed threshold (36.2% > 10.0%) |
+| t2 | 📈 load_change | stress | 15 | Load increased to 15 VUs (stress) |
+| t3 | 🔴 error_rate_breach | stress | 15 | Error rate crossed threshold (32.8% > 10.0%) |
+| t4 | 🔴 error_rate_breach | spike | 15 | Error rate crossed threshold (32.5% > 10.0%) |
 
 ## Root Cause Analysis
 
@@ -53,15 +53,15 @@ The system reached its **breaking point at 1 virtual users** (3.1 requests/secon
 
 ### Primary Cause
 
-Baseline performance already degraded before load test (at 1 VUs, 3.1 RPS)
+Baseline performance already degraded before load test (at 1 VUs, 3.2 RPS)
 
 ### Reasoning
 
 1. Step 1: Analyzed load test results from baseline, stress, and spike tests
 2. Step 2: Observed 2 load changes and 3 violations
-3. Step 3: First violation at t1: Error rate crossed threshold (33.9% > 20.0%)
+3. Step 3: First violation at t1: Error rate crossed threshold (36.2% > 10.0%)
 4. Step 4: Classification rationale - Baseline test already showed degradation
-5.          Baseline error rate exceeded 20.0%
+5.          Baseline error rate exceeded 10.0%
 6. Step 5: Classified as already_degraded_baseline
 
 ### Supporting Evidence
@@ -69,12 +69,12 @@ Baseline performance already degraded before load test (at 1 VUs, 3.1 RPS)
 - Baseline: 15 requests analyzed
 - Baseline P95: 309.5ms
 - Baseline confidence: VERY_LOW
-- Load tests: 744 total requests
-- Average error rate: 35.3%
-- Max P95 latency: 30.8ms
+- Load tests: 4001 total requests
+- Average error rate: 33.9%
+- Max P95 latency: 26.0ms
 - error_rate_breach at 1 VUs
-- Observed: 0.3387, Threshold: 0.2000
-- Severity: 1.69x threshold
+- Observed: 0.3625, Threshold: 0.1000
+- Severity: 3.62x threshold
 
 ## Recommendations
 
@@ -90,14 +90,14 @@ System already degraded before load testing
 
 | Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
 |-----------|-----|----------|----------|------------|-------------|------------|
-| baseline | 1 | 21s | 62 | 33.87% | 30ms | 3.1 RPS |
-| stress | 5 | 41s | 397 | 36.02% | 31ms | 9.9 RPS |
-| spike | 5 | 35s | 285 | 36.14% | 31ms | 8.3 RPS |
+| baseline | 1 | 26s | 80 | 36.25% | 26ms | 3.2 RPS |
+| stress | 15 | 101s | 2738 | 32.80% | 26ms | 27.3 RPS |
+| spike | 15 | 45s | 1183 | 32.54% | 26ms | 26.7 RPS |
 
 ## Telemetry Analysis
 
 **Source:** otel  
-**Collection Time:** 2025-12-21 17:23:47 UTC
+**Collection Time:** 2025-12-21 17:36:37 UTC
 
 ### Endpoints Analyzed
 

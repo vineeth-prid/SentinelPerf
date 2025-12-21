@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: baseline_test
 // Type: baseline
 // Target: http://localhost:8765
-// Generated: 2025-12-21T17:23:47.411415Z
+// Generated: 2025-12-21T17:36:37.953864Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -19,12 +19,12 @@ const latencyTrend = new Trend('sentinelperf_latency');
 export const options = {
   stages: [
     { duration: '10s', target: 1 },
-    { duration: '5s', target: 1 },
+    { duration: '10s', target: 1 },
     { duration: '5s', target: 0 }
   ],
   thresholds: {
-    'http_req_failed': ['rate<0.2'],
-    'http_req_duration': ['p(95)<5000']
+    'http_req_failed': ['rate<0.1'],
+    'http_req_duration': ['p(95)<500']
   },
   // Output JSON summary
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'],

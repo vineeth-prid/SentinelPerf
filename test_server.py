@@ -36,10 +36,10 @@ class LoadState:
 state = LoadState()
 
 # Configuration for degradation simulation
-# SCENARIO: DEGRADED BASELINE - Errors even at minimal load
-MAX_HEALTHY_CONCURRENT = 0  # Always degraded
-ERROR_THRESHOLD_CONCURRENT = 1  # Start erroring immediately
-BASE_LATENCY_MS = 50  # Higher base latency
+# SCENARIO: CAPACITY EXHAUSTION - Throughput plateau, latency up, minimal errors
+MAX_HEALTHY_CONCURRENT = 5  # Low threshold
+ERROR_THRESHOLD_CONCURRENT = 100  # Very high - almost no errors
+BASE_LATENCY_MS = 30  # Base latency
 
 
 @app.get("/")

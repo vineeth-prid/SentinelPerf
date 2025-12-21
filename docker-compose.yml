@@ -1,0 +1,12 @@
+# Docker Compose for local testing
+# Usage: docker-compose run sentinelperf run --env=local
+
+version: "3.8"
+
+services:
+  sentinelperf:
+    build: .
+    volumes:
+      - ./:/work
+    network_mode: host  # Access localhost services
+    working_dir: /work

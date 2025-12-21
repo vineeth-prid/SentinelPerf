@@ -1,37 +1,30 @@
 """k6 execution wrapper for SentinelPerf"""
 
 import json
+import os
 import subprocess
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-from sentinelperf.load.generator import TestScript
+from sentinelperf.load.generator import TestScript, TestType
 
 
 @dataclass
-class K6Result:
-    """Results from k6 test execution"""
-    success: bool
-    test_name: str
-    
-    # Timing
-    started_at: datetime
-    completed_at: datetime
-    
-    # Request metrics
+class K6Metrics:
+    """Parsed k6 metrics"""
+    # Request counts
     total_requests: int = 0
-    successful_requests: int = 0
     failed_requests: int = 0
     
-    # Rate metrics
+    # Rates
     requests_per_second: float = 0.0
     error_rate: float = 0.0
     
-    # Latency metrics (ms)
+    # Latency (ms)
     latency_avg: float = 0.0
     latency_min: float = 0.0
     latency_max: float = 0.0
@@ -40,45 +33,80 @@ class K6Result:
     latency_p95: float = 0.0
     latency_p99: float = 0.0
     
-    # VU metrics
+    # VUs
     vus_max: int = 0
+    iterations: int = 0
+
+
+@dataclass
+class K6Result:
+    """Results from k6 test execution"""
+    success: bool
+    test_name: str
+    test_type: str
+    
+    # Timing
+    started_at: datetime
+    completed_at: datetime
+    duration_seconds: float = 0.0
+    
+    # Metrics
+    metrics: K6Metrics = field(default_factory=K6Metrics)
     
     # Threshold results
     thresholds_passed: bool = True
     threshold_results: Dict[str, bool] = field(default_factory=dict)
     
-    # Raw output
+    # Raw data
     raw_json: Dict[str, Any] = field(default_factory=dict)
     raw_stdout: str = ""
     raw_stderr: str = ""
+    exit_code: int = 0
     
     @classmethod
-    def from_k6_json(cls, json_data: Dict[str, Any], test_name: str) -> "K6Result":
+    def from_k6_json(cls, json_data: Dict[str, Any], test_name: str, test_type: str) -> "K6Result":
         """Parse k6 JSON summary output into K6Result"""
         
-        metrics = json_data.get("metrics", {})
+        metrics_data = json_data.get("metrics", {})
         
-        # Extract HTTP request metrics
-        http_reqs = metrics.get("http_reqs", {})
-        http_req_failed = metrics.get("http_req_failed", {})
-        http_req_duration = metrics.get("http_req_duration", {})
+        # Parse HTTP request metrics
+        http_reqs = metrics_data.get("http_reqs", {}).get("values", {})
+        http_req_failed = metrics_data.get("http_req_failed", {}).get("values", {})
+        http_req_duration = metrics_data.get("http_req_duration", {}).get("values", {})
+        vus_data = metrics_data.get("vus_max", {}).get("values", {})
+        iterations_data = metrics_data.get("iterations", {}).get("values", {})
         
-        # Calculate totals
-        total_requests = int(http_reqs.get("values", {}).get("count", 0))
-        error_rate = http_req_failed.get("values", {}).get("rate", 0.0)
+        # Calculate metrics
+        total_requests = int(http_reqs.get("count", 0))
+        error_rate = http_req_failed.get("rate", 0.0)
         failed_requests = int(total_requests * error_rate)
-        successful_requests = total_requests - failed_requests
         
-        # Extract latency percentiles
-        duration_values = http_req_duration.get("values", {})
+        metrics = K6Metrics(
+            total_requests=total_requests,
+            failed_requests=failed_requests,
+            requests_per_second=http_reqs.get("rate", 0.0),
+            error_rate=error_rate,
+            latency_avg=http_req_duration.get("avg", 0.0),
+            latency_min=http_req_duration.get("min", 0.0),
+            latency_max=http_req_duration.get("max", 0.0),
+            latency_p50=http_req_duration.get("med", http_req_duration.get("p(50)", 0.0)),
+            latency_p90=http_req_duration.get("p(90)", 0.0),
+            latency_p95=http_req_duration.get("p(95)", 0.0),
+            latency_p99=http_req_duration.get("p(99)", 0.0),
+            vus_max=int(vus_data.get("max", vus_data.get("value", 0))),
+            iterations=int(iterations_data.get("count", 0)),
+        )
         
-        # Extract threshold results
+        # Parse threshold results
         thresholds = json_data.get("thresholds", {})
         threshold_results = {}
         thresholds_passed = True
         
         for name, result in thresholds.items():
-            passed = result.get("ok", True)
+            if isinstance(result, dict):
+                passed = result.get("ok", True)
+            else:
+                passed = bool(result)
             threshold_results[name] = passed
             if not passed:
                 thresholds_passed = False
@@ -86,21 +114,10 @@ class K6Result:
         return cls(
             success=thresholds_passed,
             test_name=test_name,
-            started_at=datetime.utcnow(),  # TODO: Extract from k6 output
+            test_type=test_type,
+            started_at=datetime.utcnow(),
             completed_at=datetime.utcnow(),
-            total_requests=total_requests,
-            successful_requests=successful_requests,
-            failed_requests=failed_requests,
-            requests_per_second=http_reqs.get("values", {}).get("rate", 0.0),
-            error_rate=error_rate,
-            latency_avg=duration_values.get("avg", 0.0),
-            latency_min=duration_values.get("min", 0.0),
-            latency_max=duration_values.get("max", 0.0),
-            latency_p50=duration_values.get("med", 0.0),
-            latency_p90=duration_values.get("p(90)", 0.0),
-            latency_p95=duration_values.get("p(95)", 0.0),
-            latency_p99=duration_values.get("p(99)", 0.0),
-            vus_max=int(metrics.get("vus_max", {}).get("values", {}).get("max", 0)),
+            metrics=metrics,
             thresholds_passed=thresholds_passed,
             threshold_results=threshold_results,
             raw_json=json_data,
@@ -111,65 +128,93 @@ class K6Executor:
     """
     Executes k6 load tests.
     
-    Manages k6 binary discovery/bundling and test execution.
+    Supports:
+    - Local k6 binary
+    - Docker-based execution (fallback)
     """
     
     def __init__(
         self,
         k6_path: Optional[str] = None,
-        output_dir: Path = Path("./k6-output"),
+        output_dir: Path = None,
+        use_docker: bool = False,
     ):
-        self.k6_path = k6_path or self._find_k6()
-        self.output_dir = output_dir
+        self.k6_path = k6_path
+        self.output_dir = output_dir or Path("./k6-output")
+        self.use_docker = use_docker
+        self._k6_available = None
+        
         self.output_dir.mkdir(parents=True, exist_ok=True)
     
-    def _find_k6(self) -> str:
-        """
-        Find k6 binary in system PATH or bundled location.
+    def _find_k6(self) -> Optional[str]:
+        """Find k6 binary in system PATH"""
+        if self.k6_path:
+            if Path(self.k6_path).exists():
+                return self.k6_path
         
-        Returns:
-            Path to k6 binary
-            
-        Raises:
-            RuntimeError: If k6 not found
-        """
         # Check system PATH
         k6_path = shutil.which("k6")
         if k6_path:
             return k6_path
         
-        # Check common installation locations
+        # Check common locations
         common_paths = [
             "/usr/local/bin/k6",
             "/usr/bin/k6",
-            Path.home() / ".local" / "bin" / "k6",
-            Path.cwd() / "bin" / "k6",
+            str(Path.home() / ".local" / "bin" / "k6"),
+            str(Path.cwd() / "bin" / "k6"),
         ]
         
         for path in common_paths:
             if Path(path).exists():
-                return str(path)
+                return path
         
-        raise RuntimeError(
-            "k6 not found. Please install k6: https://k6.io/docs/getting-started/installation/"
-        )
+        return None
     
     def check_available(self) -> bool:
-        """Check if k6 is available and working"""
-        try:
-            result = subprocess.run(
-                [self.k6_path, "version"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            return result.returncode == 0
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            return False
+        """Check if k6 is available"""
+        if self._k6_available is not None:
+            return self._k6_available
+        
+        k6_path = self._find_k6()
+        if k6_path:
+            try:
+                result = subprocess.run(
+                    [k6_path, "version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                self._k6_available = result.returncode == 0
+                if self._k6_available:
+                    self.k6_path = k6_path
+                return self._k6_available
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+        
+        # Try Docker
+        if self.use_docker:
+            try:
+                result = subprocess.run(
+                    ["docker", "run", "--rm", "grafana/k6", "version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                self._k6_available = result.returncode == 0
+                return self._k6_available
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                pass
+        
+        self._k6_available = False
+        return False
     
     def get_version(self) -> Optional[str]:
         """Get k6 version string"""
-        try:
+        if not self.check_available():
+            return None
+        
+        if self.k6_path:
             result = subprocess.run(
                 [self.k6_path, "version"],
                 capture_output=True,
@@ -178,15 +223,14 @@ class K6Executor:
             )
             if result.returncode == 0:
                 return result.stdout.strip()
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
+        
         return None
     
     def execute(
         self,
         script: TestScript,
-        timeout_seconds: int = 600,
-        env_vars: Dict[str, str] = None,
+        timeout_seconds: int = 300,
+        verbose: bool = False,
     ) -> K6Result:
         """
         Execute a k6 test script.
@@ -194,84 +238,138 @@ class K6Executor:
         Args:
             script: TestScript to execute
             timeout_seconds: Maximum execution time
-            env_vars: Additional environment variables
+            verbose: Print k6 output
             
         Returns:
             K6Result with test metrics
         """
+        if not self.check_available():
+            return self._create_error_result(
+                script,
+                "k6 not available. Install k6 or enable Docker mode.",
+            )
+        
         # Generate script content
         script_content = script.to_k6_script()
         
-        # Write to temporary file
+        # Write to temp file
         script_file = self.output_dir / f"{script.name}.js"
         with open(script_file, "w") as f:
             f.write(script_content)
         
-        # Prepare output file
-        json_output = self.output_dir / f"{script.name}_results.json"
-        
-        # Build k6 command
-        cmd = [
-            self.k6_path,
-            "run",
-            "--summary-export", str(json_output),
-            str(script_file),
-        ]
-        
-        # Prepare environment
-        env = dict(__import__("os").environ)
-        if env_vars:
-            env.update(env_vars)
-        
         started_at = datetime.utcnow()
         
+        # Build k6 command
+        if self.k6_path:
+            cmd = [self.k6_path, "run", "--quiet", str(script_file)]
+        else:
+            # Docker mode
+            cmd = [
+                "docker", "run", "--rm",
+                "-v", f"{script_file}:/script.js",
+                "--network", "host",
+                "grafana/k6", "run", "--quiet", "/script.js"
+            ]
+        
         try:
+            if verbose:
+                print(f"  Executing: {' '.join(cmd)}")
+            
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=timeout_seconds,
-                env=env,
+                env={**os.environ, "K6_NO_USAGE_REPORT": "true"},
             )
             
             completed_at = datetime.utcnow()
+            duration = (completed_at - started_at).total_seconds()
             
-            # Parse JSON output
-            if json_output.exists():
-                with open(json_output, "r") as f:
-                    json_data = json.load(f)
-                
-                k6_result = K6Result.from_k6_json(json_data, script.name)
+            # Parse JSON output from stdout
+            try:
+                json_data = json.loads(result.stdout)
+                k6_result = K6Result.from_k6_json(
+                    json_data,
+                    script.name,
+                    script.test_type.value,
+                )
                 k6_result.started_at = started_at
                 k6_result.completed_at = completed_at
+                k6_result.duration_seconds = duration
                 k6_result.raw_stdout = result.stdout
                 k6_result.raw_stderr = result.stderr
+                k6_result.exit_code = result.returncode
                 
                 return k6_result
-            else:
-                # No JSON output, create error result
+                
+            except json.JSONDecodeError:
+                # Failed to parse JSON - create result from exit code
                 return K6Result(
-                    success=False,
+                    success=result.returncode == 0,
                     test_name=script.name,
+                    test_type=script.test_type.value,
                     started_at=started_at,
                     completed_at=completed_at,
+                    duration_seconds=duration,
                     raw_stdout=result.stdout,
                     raw_stderr=result.stderr,
+                    exit_code=result.returncode,
                 )
                 
         except subprocess.TimeoutExpired:
-            return K6Result(
-                success=False,
-                test_name=script.name,
+            return self._create_error_result(
+                script,
+                f"Test timed out after {timeout_seconds} seconds",
                 started_at=started_at,
-                completed_at=datetime.utcnow(),
-                raw_stderr=f"Test timed out after {timeout_seconds} seconds",
             )
         except Exception as e:
-            return K6Result(
-                success=False,
-                test_name=script.name,
+            return self._create_error_result(
+                script,
+                f"Execution error: {str(e)}",
                 started_at=started_at,
-                completed_at=datetime.utcnow(),
-                raw_stderr=str(e),
             )
+    
+    def _create_error_result(
+        self,
+        script: TestScript,
+        error_message: str,
+        started_at: datetime = None,
+    ) -> K6Result:
+        """Create an error result"""
+        now = datetime.utcnow()
+        return K6Result(
+            success=False,
+            test_name=script.name,
+            test_type=script.test_type.value,
+            started_at=started_at or now,
+            completed_at=now,
+            raw_stderr=error_message,
+            exit_code=1,
+        )
+    
+    def execute_all(
+        self,
+        scripts: List[TestScript],
+        timeout_per_test: int = 300,
+        verbose: bool = False,
+    ) -> List[K6Result]:
+        """Execute multiple test scripts sequentially"""
+        results = []
+        
+        for script in scripts:
+            if verbose:
+                print(f"  Running {script.test_type.value} test: {script.name}")
+            
+            result = self.execute(script, timeout_per_test, verbose)
+            results.append(result)
+            
+            if verbose:
+                if result.success:
+                    print(f"    ✓ Completed: {result.metrics.total_requests} requests, "
+                          f"P95: {result.metrics.latency_p95:.0f}ms, "
+                          f"Error rate: {result.metrics.error_rate:.1%}")
+                else:
+                    print(f"    ✗ Failed: {result.raw_stderr[:100]}")
+        
+        return results

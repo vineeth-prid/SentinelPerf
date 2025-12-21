@@ -214,14 +214,15 @@ class SentinelPerfAgent:
             )
         
         if telemetry_data is None:
-            state.add_error(f"Failed to fetch telemetry from {active_source}")
+            state["errors"].append(f"Failed to fetch telemetry from {active_source}")
+            state["phase"] = AgentPhase.ERROR.value
             return state
         
         # Store baseline for later phases
         self._baseline = baseline
         
         # Convert to TelemetryInsight for state
-        state.telemetry_insights = TelemetryInsight(
+        state["telemetry_insights"] = TelemetryInsight(
             source=active_source,
             endpoints=[
                 {

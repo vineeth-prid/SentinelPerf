@@ -451,6 +451,19 @@ class BaselineInference:
             "=" * 60,
             "BASELINE BEHAVIOR SUMMARY",
             "=" * 60,
+        ]
+        
+        # Add confidence warning at top if LOW or VERY_LOW
+        if baseline.confidence:
+            c = baseline.confidence
+            if c.level in ("LOW", "VERY_LOW"):
+                lines.append(f"⚠️  {baseline.get_confidence_summary()}")
+                lines.append("")
+            else:
+                lines.append(f"✓ {baseline.get_confidence_summary()}")
+                lines.append("")
+        
+        lines.extend([
             f"Analysis Period: {baseline.analysis_start.strftime('%Y-%m-%d %H:%M')} to {baseline.analysis_end.strftime('%Y-%m-%d %H:%M')}",
             f"Duration: {baseline.analysis_duration_minutes:.1f} minutes",
             f"Source: {baseline.telemetry_source}",
@@ -467,7 +480,7 @@ class BaselineInference:
             f"  P99: {baseline.global_latency_p99:.1f}ms",
             "",
             f"TOP {len(baseline.top_endpoints)} ENDPOINTS BY TRAFFIC:",
-        ]
+        ])
         
         for i, ep in enumerate(baseline.top_endpoints, 1):
             lines.append(
@@ -489,6 +502,14 @@ class BaselineInference:
         load_plan = baseline.to_load_plan_input()
         lines.append(f"  Initial VUs: {load_plan['recommended_initial_vus']}")
         lines.append(f"  Max VUs: {load_plan['recommended_max_vus']}")
+        
+        # Add data quality flags if present
+        if baseline.confidence and baseline.confidence.flags:
+            lines.append("")
+            lines.append("DATA QUALITY FLAGS:")
+            for flag in baseline.confidence.flags:
+                lines.append(f"  ⚠ {flag.value}")
+        
         lines.append("=" * 60)
         
         return "\n".join(lines)

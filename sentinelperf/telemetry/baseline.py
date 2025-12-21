@@ -2,10 +2,54 @@
 
 import statistics
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
+from enum import Enum
 
 from sentinelperf.telemetry.base import TelemetryData, EndpointMetrics, TrafficPattern
+
+
+class DataQualityFlag(str, Enum):
+    """Data quality warning flags for baseline confidence"""
+    LOW_SAMPLE_SIZE = "LOW_SAMPLE_SIZE"  # < 100 requests
+    VERY_LOW_SAMPLE_SIZE = "VERY_LOW_SAMPLE_SIZE"  # < 30 requests
+    SHORT_TIME_WINDOW = "SHORT_TIME_WINDOW"  # < 5 minutes
+    VERY_SHORT_TIME_WINDOW = "VERY_SHORT_TIME_WINDOW"  # < 1 minute
+    SKEWED_ENDPOINT_DISTRIBUTION = "SKEWED_ENDPOINT_DISTRIBUTION"  # Top endpoint > 50%
+    SINGLE_ENDPOINT = "SINGLE_ENDPOINT"  # Only 1 endpoint
+    HIGH_ERROR_RATE = "HIGH_ERROR_RATE"  # > 10% baseline errors
+    NO_TRAFFIC_PATTERNS = "NO_TRAFFIC_PATTERNS"  # Could not infer patterns
+    MISSING_LATENCY_DATA = "MISSING_LATENCY_DATA"  # No latency metrics
+
+
+@dataclass
+class BaselineConfidence:
+    """Confidence assessment for baseline data"""
+    score: float  # 0.0 to 1.0
+    level: str  # "HIGH", "MEDIUM", "LOW", "VERY_LOW"
+    flags: Set[DataQualityFlag] = field(default_factory=set)
+    
+    # Thresholds used for assessment
+    sample_count: int = 0
+    time_window_minutes: float = 0.0
+    endpoint_count: int = 0
+    top_endpoint_share: float = 0.0
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "score": self.score,
+            "level": self.level,
+            "flags": [f.value for f in self.flags],
+            "sample_count": self.sample_count,
+            "time_window_minutes": self.time_window_minutes,
+            "endpoint_count": self.endpoint_count,
+            "top_endpoint_share": self.top_endpoint_share,
+        }
+    
+    @property
+    def is_reliable(self) -> bool:
+        """Check if baseline is reliable enough for load testing"""
+        return self.score >= 0.5 and DataQualityFlag.VERY_LOW_SAMPLE_SIZE not in self.flags
 
 
 @dataclass
@@ -69,6 +113,9 @@ class BaselineBehavior:
     
     # Raw data reference
     telemetry_source: str = ""
+    
+    # Confidence assessment
+    confidence: Optional[BaselineConfidence] = None
     
     def to_load_plan_input(self) -> Dict[str, Any]:
         """

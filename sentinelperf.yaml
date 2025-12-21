@@ -24,12 +24,12 @@ environments:
     
     load:
       initial_vus: 2
-      max_vus: 15  # Lower max to avoid overwhelming server
+      max_vus: 30  # Higher to trigger spike failure
       ramp_duration: "10s"
       hold_duration: "10s"
       error_rate_threshold: 0.05
       p95_latency_threshold_ms: 200
-      adaptive_step: 3
+      adaptive_step: 5
     
     llm:
       provider: "ollama"

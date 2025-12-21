@@ -478,20 +478,21 @@ class SentinelPerfAgent:
         
         return headers
     
-    def _node_load_execution(self, state: AgentState) -> AgentState:
+    def _node_load_execution(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute load tests using k6.
         
         Currently mocked - will be implemented in next phase.
         """
-        state.phase = AgentPhase.LOAD_EXECUTION
+        state["phase"] = AgentPhase.LOAD_EXECUTION.value
         
         if self.verbose:
             print("[3/7] Executing load tests...")
             print("  (Load execution is mocked - k6 integration pending)")
         
         # Create mocked results based on generated tests
-        for test in state.generated_tests:
+        load_results = []
+        for test in state["generated_tests"]:
             # Mock result that simulates data flow
             result = LoadTestResult(
                 test_type=test["type"],
@@ -507,16 +508,18 @@ class SentinelPerfAgent:
                 latency_p99_ms=self._baseline.global_latency_p99 if self._baseline else 500,
                 throughput_rps=test["vus"] * 10,  # Simulated
             )
-            state.load_results.append(result)
+            load_results.append(result)
+        
+        state["load_results"] = load_results
         
         if self.verbose:
-            print(f"  Created {len(state.load_results)} mocked test results")
+            print(f"  Created {len(load_results)} mocked test results")
         
         return state
     
-    def _node_results_collection(self, state: AgentState) -> AgentState:
+    def _node_results_collection(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Collect and aggregate test results"""
-        state.phase = AgentPhase.RESULTS_COLLECTION
+        state["phase"] = AgentPhase.RESULTS_COLLECTION.value
         
         if self.verbose:
             print("[4/7] Collecting results...")
@@ -526,16 +529,16 @@ class SentinelPerfAgent:
         
         return state
     
-    def _node_breaking_point_detection(self, state: AgentState) -> AgentState:
+    def _node_breaking_point_detection(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Detect the first breaking point"""
-        state.phase = AgentPhase.BREAKING_POINT_DETECTION
+        state["phase"] = AgentPhase.BREAKING_POINT_DETECTION.value
         
         if self.verbose:
             print("[5/7] Detecting breaking point...")
         
         # Since load execution is mocked, create placeholder breaking point
         # In real implementation, this would analyze actual test results
-        state.breaking_point = BreakingPoint(
+        state["breaking_point"] = BreakingPoint(
             vus_at_break=0,
             rps_at_break=0.0,
             failure_type="none",
@@ -548,15 +551,15 @@ class SentinelPerfAgent:
         
         return state
     
-    def _node_root_cause_analysis(self, state: AgentState) -> AgentState:
+    def _node_root_cause_analysis(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze root cause of failures using LLM"""
-        state.phase = AgentPhase.ROOT_CAUSE_ANALYSIS
+        state["phase"] = AgentPhase.ROOT_CAUSE_ANALYSIS.value
         
         if self.verbose:
             print("[6/7] Analyzing root cause...")
         
         # Since no real breaking point, provide baseline summary
-        state.root_cause = RootCauseAnalysis(
+        state["root_cause"] = RootCauseAnalysis(
             primary_cause="No breaking point detected (load execution mocked)",
             confidence=0.0,
             supporting_evidence=[
@@ -582,12 +585,15 @@ class SentinelPerfAgent:
         
         return state
     
-    def _node_report_generation(self, state: AgentState) -> AgentState:
+    def _node_report_generation(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Generate output reports"""
-        state.phase = AgentPhase.REPORT_GENERATION
+        state["phase"] = AgentPhase.REPORT_GENERATION.value
         
         if self.verbose:
             print("[7/7] Generating reports...")
+        
+        # Convert to AgentState for report generation
+        agent_state = self._dict_to_agent_state(state)
         
         # Generate reports using report modules
         from sentinelperf.reports.markdown import MarkdownReporter
@@ -596,7 +602,7 @@ class SentinelPerfAgent:
         # Create intermediate result for report generation
         intermediate_result = ExecutionResult(
             success=True,
-            state=state,
+            state=agent_state,
             summary="",
         )
         

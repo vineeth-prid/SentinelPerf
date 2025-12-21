@@ -135,7 +135,10 @@ class AgentState:
     failure_timeline: List[Dict[str, Any]] = field(default_factory=list)
     failure_category: Optional[str] = None
     
-    # Root cause analysis
+    # Deterministic failure analysis (rules-based)
+    failure_analysis: Optional[DeterministicFailureAnalysis] = None
+    
+    # Root cause analysis (LLM-assisted)
     root_cause: Optional[RootCauseAnalysis] = None
     
     # Error tracking

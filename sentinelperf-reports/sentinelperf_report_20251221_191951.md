@@ -2,14 +2,14 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-21 19:10:07 UTC  
+**Generated:** 2025-12-21 19:19:51 UTC  
 **Status:** ⚠️ report_generation
 
 ---
 
 ## Executive Summary
 
-The system reached its **breaking point at 50 virtual users** (8.9 requests/second), where latency_degradation exceeded acceptable thresholds.
+The system reached its **breaking point at 50 virtual users** (3.8 requests/second), where error_rate_breach exceeded acceptable thresholds.
 
 **Primary Root Cause:** Error propagation and cascade effect (confidence: 85%)
 
@@ -20,21 +20,21 @@ The system reached its **breaking point at 50 virtual users** (8.9 requests/seco
 | Metric | Value |
 |--------|-------|
 | Virtual Users at Break | 50 |
-| Requests/Second at Break | 8.9 |
-| Failure Type | latency_degradation |
-| Threshold Exceeded | latency_p95_slope > 1.5 |
-| Observed Value | 350.8963 |
-| Threshold Value | 1.5000 |
+| Requests/Second at Break | 3.8 |
+| Failure Type | error_rate_breach |
+| Threshold Exceeded | error_rate > 0.05 |
+| Observed Value | 0.1943 |
+| Threshold Value | 0.0500 |
 | Detection Confidence | 85% |
 
 ### Observed Signals
 
-- latency_degradation at 50 VUs
-- Observed: 350.8963, Threshold: 1.5000
-- Severity: 233.93x threshold
-- Error rate: 6.48%
-- P95 latency: 14486.5ms
-- Throughput: 8.9 RPS
+- error_rate_breach at 50 VUs
+- Observed: 0.1943, Threshold: 0.0500
+- Severity: 3.89x threshold
+- Error rate: 19.43%
+- P95 latency: 39247.6ms
+- Throughput: 3.8 RPS
 
 ### Failure Timeline
 
@@ -42,15 +42,14 @@ The system reached its **breaking point at 50 virtual users** (8.9 requests/seco
 |------|-------|-----------|-----|-------------|
 | t0 | 📈 load_change | baseline | 5 | Load increased to 5 VUs (baseline) |
 | t1 | 📈 load_change | stress | 50 | Load increased to 50 VUs (stress) |
-| t2 | 🔴 error_rate_breach | stress | 50 | Error rate crossed threshold (6.5% > 5.0%) |
-| t3 | 🟠 latency_degradation | stress | 50 | Latency slope changed (350.9x increase) |
-| t4 | 🟠 latency_degradation | stress | 50 | Latency exceeded threshold (14487ms > 200ms) |
-| t5 | 🟡 throughput_plateau | stress | 50 | Throughput plateaued (expected 450.0%, got -17.7%) |
-| t6 | 🟡 throughput_plateau | stress | 50 | Throughput dropped (-17.7% change) |
+| t2 | 🔴 error_rate_breach | stress | 50 | Error rate crossed threshold (19.4% > 5.0%) |
+| t3 | 🟠 latency_degradation | stress | 50 | Latency slope changed (960.5x increase) |
+| t4 | 🟠 latency_degradation | stress | 50 | Latency exceeded threshold (39248ms > 200ms) |
+| t5 | 🟡 throughput_plateau | stress | 50 | Throughput plateaued (expected 450.0%, got -65.2%) |
+| t6 | 🟡 throughput_plateau | stress | 50 | Throughput dropped (-65.2% change) |
 | t7 | ⚠️ saturation | stress | 50 | Saturation detected (VUs increased but RPS stagnan... |
-| t8 | 🔴 error_rate_breach | spike | 50 | Error rate crossed threshold (81.8% > 5.0%) |
-| t9 | 🟠 latency_degradation | spike | 50 | Latency slope changed (3.6x increase) |
-| t10 | 🟠 latency_degradation | spike | 50 | Latency exceeded threshold (52866ms > 200ms) |
+| t8 | 🔴 error_rate_breach | spike | 50 | Error rate crossed threshold (80.0% > 5.0%) |
+| t9 | 🟠 latency_degradation | spike | 50 | Latency exceeded threshold (53845ms > 200ms) |
 
 ## Root Cause Analysis
 
@@ -60,7 +59,7 @@ The system reached its **breaking point at 50 virtual users** (8.9 requests/seco
 
 ### Summary
 
-Error rate exceeded threshold causing cascading failures at 50 VUs (8.9 RPS)
+Error rate exceeded threshold causing cascading failures at 50 VUs (3.8 RPS)
 
 ### Primary Cause
 
@@ -68,10 +67,10 @@ Error propagation and cascade effect
 
 ### Contributing Factors
 
+- Throughput stopped scaling with load
+- Latency degradation detected
 - Error rate exceeded threshold
 - Resource saturation detected
-- Latency degradation detected
-- Throughput stopped scaling with load
 
 ### Assumptions
 
@@ -91,7 +90,7 @@ Error propagation and cascade effect
 **Risk:** 🟢 LOW  
 **Confidence:** 85%
 
-**Rationale:** Errors cascaded causing system collapse (detected at 50 VUs, 8.9 RPS via latency_degradation)
+**Rationale:** Errors cascaded causing system collapse (detected at 50 VUs, 3.8 RPS via error_rate_breach)
 
 **Expected Impact:** Identify root cause of error propagation
 
@@ -124,9 +123,9 @@ Error propagation and cascade effect
 
 | Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
 |-----------|-----|----------|----------|------------|-------------|------------|
-| baseline | 5 | 26s | 273 | 0.00% | 41ms | 10.8 RPS |
-| stress | 50 | 150s | 1327 | 6.48% | 14487ms | 8.9 RPS |
-| spike | 50 | 75s | 11 | 81.82% | 52866ms | 0.1 RPS |
+| baseline | 5 | 26s | 274 | 0.00% | 41ms | 10.8 RPS |
+| stress | 50 | 150s | 566 | 19.43% | 39248ms | 3.8 RPS |
+| spike | 50 | 62s | 5 | 80.00% | 53845ms | 0.1 RPS |
 
 ## Telemetry Analysis
 

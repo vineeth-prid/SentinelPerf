@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "generated_at": "2025-12-21T19:10:07.038897",
+  "generated_at": "2025-12-21T19:19:51.452842",
   "status": "success",
   "target": {
     "url": "http://localhost:8765",
     "environment": "test"
   },
   "execution": {
-    "started_at": "2025-12-21T19:05:55.942677",
+    "started_at": "2025-12-21T19:15:53.544124",
     "completed_at": null,
     "duration_seconds": null,
     "phase": "report_generation",
@@ -21,7 +21,7 @@
   "breaking_point": {
     "detected": true,
     "classification": "error_driven_collapse",
-    "message": "Breaking point at 50 VUs (latency_degradation)",
+    "message": "Breaking point at 50 VUs (error_rate_breach)",
     "timeline": [
       {
         "timestamp": "t0",
@@ -30,7 +30,7 @@
         "test_type": "baseline",
         "vus": 5,
         "metrics": {
-          "rps": 10.761805776170547
+          "rps": 10.841024735627812
         }
       },
       {
@@ -40,61 +40,61 @@
         "test_type": "stress",
         "vus": 50,
         "metrics": {
-          "rps": 8.852496406410872
+          "rps": 3.7758321015128677
         }
       },
       {
         "timestamp": "t2",
         "event_type": "error_rate_breach",
-        "description": "Error rate crossed threshold (6.5% > 5.0%)",
+        "description": "Error rate crossed threshold (19.4% > 5.0%)",
         "test_type": "stress",
         "vus": 50,
         "metrics": {
-          "error_rate": 0.06480783722682742,
+          "error_rate": 0.19434628975265017,
           "threshold": 0.05
         }
       },
       {
         "timestamp": "t3",
         "event_type": "latency_degradation",
-        "description": "Latency slope changed (350.9x increase)",
+        "description": "Latency slope changed (960.5x increase)",
         "test_type": "stress",
         "vus": 50,
         "metrics": {
-          "latency_p95_slope": 350.89630223079905,
+          "latency_p95_slope": 960.5180315151036,
           "threshold": 1.5
         }
       },
       {
         "timestamp": "t4",
         "event_type": "latency_degradation",
-        "description": "Latency exceeded threshold (14487ms > 200ms)",
+        "description": "Latency exceeded threshold (39248ms > 200ms)",
         "test_type": "stress",
         "vus": 50,
         "metrics": {
-          "latency_p95_absolute": 14486.5335449,
+          "latency_p95_absolute": 39247.573410749996,
           "threshold": 200
         }
       },
       {
         "timestamp": "t5",
         "event_type": "throughput_plateau",
-        "description": "Throughput plateaued (expected 450.0%, got -17.7%)",
+        "description": "Throughput plateaued (expected 450.0%, got -65.2%)",
         "test_type": "stress",
         "vus": 50,
         "metrics": {
-          "throughput_plateau": -0.17741533432868545,
+          "throughput_plateau": -0.6517089303279588,
           "threshold": 4.5
         }
       },
       {
         "timestamp": "t6",
         "event_type": "throughput_plateau",
-        "description": "Throughput dropped (-17.7% change)",
+        "description": "Throughput dropped (-65.2% change)",
         "test_type": "stress",
         "vus": 50,
         "metrics": {
-          "throughput_drop": -0.17741533432868545,
+          "throughput_drop": -0.6517089303279588,
           "threshold": 0
         }
       },
@@ -105,69 +105,58 @@
         "test_type": "stress",
         "vus": 50,
         "metrics": {
-          "saturation": 0.8225846656713146,
+          "saturation": 0.34829106967204115,
           "threshold": 5.0
         }
       },
       {
         "timestamp": "t8",
         "event_type": "error_rate_breach",
-        "description": "Error rate crossed threshold (81.8% > 5.0%)",
+        "description": "Error rate crossed threshold (80.0% > 5.0%)",
         "test_type": "spike",
         "vus": 50,
         "metrics": {
-          "error_rate": 0.8181818181818182,
+          "error_rate": 0.8,
           "threshold": 0.05
         }
       },
       {
         "timestamp": "t9",
         "event_type": "latency_degradation",
-        "description": "Latency slope changed (3.6x increase)",
+        "description": "Latency exceeded threshold (53845ms > 200ms)",
         "test_type": "spike",
         "vus": 50,
         "metrics": {
-          "latency_p95_slope": 3.649302818037614,
-          "threshold": 1.5
-        }
-      },
-      {
-        "timestamp": "t10",
-        "event_type": "latency_degradation",
-        "description": "Latency exceeded threshold (52866ms > 200ms)",
-        "test_type": "spike",
-        "vus": 50,
-        "metrics": {
-          "latency_p95_absolute": 52865.747688999996,
+          "latency_p95_absolute": 53845.4393446,
           "threshold": 200
         }
       }
     ],
     "vus_at_break": 50,
-    "rps_at_break": 8.852496406410872,
-    "failure_type": "latency_degradation",
-    "threshold_exceeded": "latency_p95_slope > 1.5",
-    "observed_value": 350.89630223079905,
-    "threshold_value": 1.5,
+    "rps_at_break": 3.7758321015128677,
+    "failure_type": "error_rate_breach",
+    "threshold_exceeded": "error_rate > 0.05",
+    "observed_value": 0.19434628975265017,
+    "threshold_value": 0.05,
     "confidence": 0.85,
     "signals": [
-      "latency_degradation at 50 VUs",
-      "Observed: 350.8963, Threshold: 1.5000",
-      "Severity: 233.93x threshold",
-      "Error rate: 6.48%",
-      "P95 latency: 14486.5ms",
-      "Throughput: 8.9 RPS"
+      "error_rate_breach at 50 VUs",
+      "Observed: 0.1943, Threshold: 0.0500",
+      "Severity: 3.89x threshold",
+      "Error rate: 19.43%",
+      "P95 latency: 39247.6ms",
+      "Throughput: 3.8 RPS"
     ]
   },
   "root_cause": {
     "analyzed": true,
-    "root_cause_summary": "Error rate exceeded threshold causing cascading failures at 50 VUs (8.9 RPS)",
+    "root_cause_summary": "Error rate exceeded threshold causing cascading failures at 50 VUs (3.8 RPS)",
     "primary_cause": "Error propagation and cascade effect",
     "contributing_factors": [
-      "Error rate exceeded threshold",
-      "Resource saturation detected",
+      "Throughput stopped scaling with load",
       "Latency degradation detected",
-      "Throughput stopped scaling with load"
+      "Error rate exceeded threshold",
+      "Resource saturation detected"
     ],
     "confidence": 0.85,
     "assumptions": [
@@ -186,7 +175,7 @@
     "recommendations": [
       {
         "action": "Inspect error types and downstream dependencies",
-        "rationale": "Errors cascaded causing system collapse (detected at 50 VUs, 8.9 RPS via latency_degradation)",
+        "rationale": "Errors cascaded causing system collapse (detected at 50 VUs, 3.8 RPS via error_rate_breach)",
         "expected_impact": "Identify root cause of error propagation",
         "risk": "LOW",
         "confidence": 0.85,
@@ -222,55 +211,55 @@
       "test_type": "baseline",
       "vus": 5,
       "duration": "26s",
-      "total_requests": 273,
-      "successful_requests": 273,
+      "total_requests": 274,
+      "successful_requests": 274,
       "failed_requests": 0,
       "error_rate": 0,
       "latency": {
-        "p50_ms": 37.102896,
-        "p95_ms": 41.2843722,
-        "p99_ms": 42.9924988
+        "p50_ms": 36.073886,
+        "p95_ms": 40.860839799999994,
+        "p99_ms": 41.35674765
       },
-      "throughput_rps": 10.761805776170547,
-      "timestamp": "2025-12-21T19:10:06.940461"
+      "throughput_rps": 10.841024735627812,
+      "timestamp": "2025-12-21T19:19:51.401303"
     },
     {
       "test_type": "stress",
       "vus": 50,
       "duration": "150s",
-      "total_requests": 1327,
-      "successful_requests": 1241,
-      "failed_requests": 86,
-      "error_rate": 0.06480783722682742,
+      "total_requests": 566,
+      "successful_requests": 456,
+      "failed_requests": 110,
+      "error_rate": 0.19434628975265017,
       "latency": {
-        "p50_ms": 36.994941,
-        "p95_ms": 14486.5335449,
-        "p99_ms": 53644.675404899965
+        "p50_ms": 38.141059999999996,
+        "p95_ms": 39247.573410749996,
+        "p99_ms": 60000.31160095
       },
-      "throughput_rps": 8.852496406410872,
-      "timestamp": "2025-12-21T19:10:06.940465"
+      "throughput_rps": 3.7758321015128677,
+      "timestamp": "2025-12-21T19:19:51.401307"
     },
     {
       "test_type": "spike",
       "vus": 50,
-      "duration": "75s",
-      "total_requests": 11,
-      "successful_requests": 2,
-      "failed_requests": 9,
-      "error_rate": 0.8181818181818182,
+      "duration": "62s",
+      "total_requests": 5,
+      "successful_requests": 1,
+      "failed_requests": 4,
+      "error_rate": 0.8,
       "latency": {
-        "p50_ms": 42086.410598,
-        "p95_ms": 52865.747688999996,
-        "p99_ms": 54163.2007762
+        "p50_ms": 51239.476133,
+        "p95_ms": 53845.4393446,
+        "p99_ms": 54366.160040120005
       },
-      "throughput_rps": 0.14864807761705848,
-      "timestamp": "2025-12-21T19:10:06.940467"
+      "throughput_rps": 0.08196614860828876,
+      "timestamp": "2025-12-21T19:19:51.401309"
     }
   ],
   "ci_cd": {
     "exit_code": 0,
     "thresholds_passed": false,
-    "summary": "FAIL: Breaking point at 50 VUs (latency_degradation)",
+    "summary": "FAIL: Breaking point at 50 VUs (error_rate_breach)",
     "breaking_point_vus": 50,
     "root_cause_confidence": 0.85,
     "recommendation_count": 3

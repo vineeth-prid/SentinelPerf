@@ -1,0 +1,165 @@
+# SentinelPerf Analysis Report
+
+**Target:** http://localhost:8765  
+**Environment:** test  
+**Generated:** 2025-12-21 19:10:07 UTC  
+**Status:** ⚠️ report_generation
+
+---
+
+## Executive Summary
+
+The system reached its **breaking point at 50 virtual users** (8.9 requests/second), where latency_degradation exceeded acceptable thresholds.
+
+**Primary Root Cause:** Error propagation and cascade effect (confidence: 85%)
+
+## Breaking Point Analysis
+
+**Classification:** Error Driven Collapse
+
+| Metric | Value |
+|--------|-------|
+| Virtual Users at Break | 50 |
+| Requests/Second at Break | 8.9 |
+| Failure Type | latency_degradation |
+| Threshold Exceeded | latency_p95_slope > 1.5 |
+| Observed Value | 350.8963 |
+| Threshold Value | 1.5000 |
+| Detection Confidence | 85% |
+
+### Observed Signals
+
+- latency_degradation at 50 VUs
+- Observed: 350.8963, Threshold: 1.5000
+- Severity: 233.93x threshold
+- Error rate: 6.48%
+- P95 latency: 14486.5ms
+- Throughput: 8.9 RPS
+
+### Failure Timeline
+
+| Time | Event | Test Type | VUs | Description |
+|------|-------|-----------|-----|-------------|
+| t0 | 📈 load_change | baseline | 5 | Load increased to 5 VUs (baseline) |
+| t1 | 📈 load_change | stress | 50 | Load increased to 50 VUs (stress) |
+| t2 | 🔴 error_rate_breach | stress | 50 | Error rate crossed threshold (6.5% > 5.0%) |
+| t3 | 🟠 latency_degradation | stress | 50 | Latency slope changed (350.9x increase) |
+| t4 | 🟠 latency_degradation | stress | 50 | Latency exceeded threshold (14487ms > 200ms) |
+| t5 | 🟡 throughput_plateau | stress | 50 | Throughput plateaued (expected 450.0%, got -17.7%) |
+| t6 | 🟡 throughput_plateau | stress | 50 | Throughput dropped (-17.7% change) |
+| t7 | ⚠️ saturation | stress | 50 | Saturation detected (VUs increased but RPS stagnan... |
+| t8 | 🔴 error_rate_breach | spike | 50 | Error rate crossed threshold (81.8% > 5.0%) |
+| t9 | 🟠 latency_degradation | spike | 50 | Latency slope changed (3.6x increase) |
+| t10 | 🟠 latency_degradation | spike | 50 | Latency exceeded threshold (52866ms > 200ms) |
+
+## Root Cause Analysis
+
+**Analysis Mode:** rules  
+
+**Confidence:** 85%
+
+### Summary
+
+Error rate exceeded threshold causing cascading failures at 50 VUs (8.9 RPS)
+
+### Primary Cause
+
+Error propagation and cascade effect
+
+### Contributing Factors
+
+- Error rate exceeded threshold
+- Resource saturation detected
+- Latency degradation detected
+- Throughput stopped scaling with load
+
+### Assumptions
+
+- Load tests accurately simulate production traffic patterns
+- Telemetry data reflects actual system behavior
+
+### Limitations
+
+- Analysis based on rules-only (LLM unavailable)
+- Low baseline confidence - limited historical data
+
+## Recommendations
+
+### 1. Inspect error types and downstream dependencies
+
+**Priority:** 🔴 P1  
+**Risk:** 🟢 LOW  
+**Confidence:** 85%
+
+**Rationale:** Errors cascaded causing system collapse (detected at 50 VUs, 8.9 RPS via latency_degradation)
+
+**Expected Impact:** Identify root cause of error propagation
+
+### 2. Implement circuit breaker pattern
+
+**Priority:** 🟡 P2  
+**Risk:** 🟡 MEDIUM  
+**Confidence:** 82%
+
+**Rationale:** Prevent cascade failures from propagating
+
+**Expected Impact:** Graceful degradation instead of collapse
+
+### 3. Add rate limiting at entry points
+
+**Priority:** 🟡 P3  
+**Risk:** 🟡 MEDIUM  
+**Confidence:** 78%
+
+**Rationale:** Protect system from overload-induced errors
+
+**Expected Impact:** Controlled rejection instead of uncontrolled failure
+
+### Limitations
+
+- Recommendations are guidance, not prescriptions
+- Actual fixes require system-specific investigation
+
+## Load Test Results
+
+| Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
+|-----------|-----|----------|----------|------------|-------------|------------|
+| baseline | 5 | 26s | 273 | 0.00% | 41ms | 10.8 RPS |
+| stress | 50 | 150s | 1327 | 6.48% | 14487ms | 8.9 RPS |
+| spike | 50 | 75s | 11 | 81.82% | 52866ms | 0.1 RPS |
+
+## Telemetry Analysis
+
+No telemetry data was analyzed.
+
+## Methodology
+
+This analysis was performed using SentinelPerf AI, an autonomous performance engineering agent.
+
+### Analysis Pipeline
+
+1. **Telemetry Analysis** - Inferred traffic patterns from available telemetry
+2. **Test Generation** - Generated load, stress, and spike test configurations
+3. **Load Execution** - Executed tests using k6 load testing framework
+4. **Breaking Point Detection** - Identified first point of failure
+5. **Root Cause Analysis** - Determined probable cause using observed signals only
+
+### LLM Rules Enforced
+
+- LLM may NOT invent metrics not present in observed data
+- LLM may NOT infer causes without supporting signals
+- All reasoning is step-by-step and reproducible
+- Confidence scores are based on evidence strength only
+
+---
+
+## Appendix
+
+
+**Errors Encountered:** 1
+
+- No telemetry source configured or enabled
+
+---
+
+*Generated by SentinelPerf AI v0.1.0*

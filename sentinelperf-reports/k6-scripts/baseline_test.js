@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: baseline_test
 // Type: baseline
 // Target: http://localhost:8765
-// Generated: 2025-12-21T17:43:54.273388Z
+// Generated: 2025-12-21T17:52:57.935731Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';

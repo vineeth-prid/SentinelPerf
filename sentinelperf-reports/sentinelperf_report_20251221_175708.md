@@ -2,16 +2,16 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-21 17:47:07 UTC  
+**Generated:** 2025-12-21 17:57:08 UTC  
 **Status:** ⚠️ report_generation
 
 ---
 
 ## Executive Summary
 
-The system reached its **breaking point at 50 virtual users** (36.6 requests/second), where error_rate_breach exceeded acceptable thresholds.
+The system reached its **breaking point at 50 virtual users** (9.5 requests/second), where latency_degradation exceeded acceptable thresholds.
 
-**Primary Root Cause:** Error cascade caused system collapse (at 50 VUs, 36.6 RPS) (confidence: 88%)
+**Primary Root Cause:** Error cascade caused system collapse (at 50 VUs, 9.5 RPS) (confidence: 88%)
 
 ## Breaking Point Analysis
 
@@ -20,21 +20,21 @@ The system reached its **breaking point at 50 virtual users** (36.6 requests/sec
 | Metric | Value |
 |--------|-------|
 | Virtual Users at Break | 50 |
-| Requests/Second at Break | 36.6 |
-| Failure Type | error_rate_breach |
-| Threshold Exceeded | error_rate > 0.05 |
-| Observed Value | 0.5187 |
-| Threshold Value | 0.0500 |
+| Requests/Second at Break | 9.5 |
+| Failure Type | latency_degradation |
+| Threshold Exceeded | latency_p95_slope > 1.5 |
+| Observed Value | 365.5509 |
+| Threshold Value | 1.5000 |
 | Detection Confidence | 85% |
 
 ### Observed Signals
 
-- error_rate_breach at 50 VUs
-- Observed: 0.5187, Threshold: 0.0500
-- Severity: 10.37x threshold
-- Error rate: 51.87%
-- P95 latency: 703.9ms
-- Throughput: 36.6 RPS
+- latency_degradation at 50 VUs
+- Observed: 365.5509, Threshold: 1.5000
+- Severity: 243.70x threshold
+- Error rate: 5.68%
+- P95 latency: 11285.8ms
+- Throughput: 9.5 RPS
 
 ### Failure Timeline
 
@@ -42,11 +42,14 @@ The system reached its **breaking point at 50 virtual users** (36.6 requests/sec
 |------|-------|-----------|-----|-------------|
 | t0 | 📈 load_change | baseline | 5 | Load increased to 5 VUs (baseline) |
 | t1 | 📈 load_change | stress | 50 | Load increased to 50 VUs (stress) |
-| t2 | 🔴 error_rate_breach | stress | 50 | Error rate crossed threshold (51.9% > 5.0%) |
-| t3 | 🟠 latency_degradation | stress | 50 | Latency slope changed (27.3x increase) |
-| t4 | 🟠 latency_degradation | stress | 50 | Latency exceeded threshold (704ms > 200ms) |
-| t5 | 🔴 error_rate_breach | spike | 50 | Error rate crossed threshold (9.2% > 5.0%) |
-| t6 | 🟠 latency_degradation | spike | 50 | Latency exceeded threshold (628ms > 200ms) |
+| t2 | 🔴 error_rate_breach | stress | 50 | Error rate crossed threshold (5.7% > 5.0%) |
+| t3 | 🟠 latency_degradation | stress | 50 | Latency slope changed (365.6x increase) |
+| t4 | 🟠 latency_degradation | stress | 50 | Latency exceeded threshold (11286ms > 200ms) |
+| t5 | 🟡 throughput_plateau | stress | 50 | Throughput plateaued (expected 450.0%, got -13.8%) |
+| t6 | 🟡 throughput_plateau | stress | 50 | Throughput dropped (-13.8% change) |
+| t7 | ⚠️ saturation | stress | 50 | Saturation detected (VUs increased but RPS stagnan... |
+| t8 | 🔴 error_rate_breach | spike | 50 | Error rate crossed threshold (80.5% > 5.0%) |
+| t9 | 🟠 latency_degradation | spike | 50 | Latency exceeded threshold (714ms > 200ms) |
 
 ## Root Cause Analysis
 
@@ -55,13 +58,13 @@ The system reached its **breaking point at 50 virtual users** (36.6 requests/sec
 
 ### Primary Cause
 
-Error cascade caused system collapse (at 50 VUs, 36.6 RPS)
+Error cascade caused system collapse (at 50 VUs, 9.5 RPS)
 
 ### Reasoning
 
 1. Step 1: Analyzed load test results from baseline, stress, and spike tests
-2. Step 2: Observed 2 load changes and 5 violations
-3. Step 3: First violation at t2: Error rate crossed threshold (51.9% > 5.0%)
+2. Step 2: Observed 2 load changes and 8 violations
+3. Step 3: First violation at t2: Error rate crossed threshold (5.7% > 5.0%)
 4. Step 4: Classification rationale - Errors appeared before or at same load as latency degradation
 5.          Error breach at 50 VUs
 6.          Errors likely caused cascading failures
@@ -69,12 +72,12 @@ Error cascade caused system collapse (at 50 VUs, 36.6 RPS)
 
 ### Supporting Evidence
 
-- Load tests: 7905 total requests
-- Average error rate: 20.4%
-- Max P95 latency: 703.9ms
-- error_rate_breach at 50 VUs
-- Observed: 0.5187, Threshold: 0.0500
-- Severity: 10.37x threshold
+- Load tests: 2434 total requests
+- Average error rate: 28.7%
+- Max P95 latency: 11285.8ms
+- latency_degradation at 50 VUs
+- Observed: 365.5509, Threshold: 1.5000
+- Severity: 243.70x threshold
 
 ## Recommendations
 
@@ -98,9 +101,9 @@ Protect system from overload-induced errors
 
 | Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
 |-----------|-----|----------|----------|------------|-------------|------------|
-| baseline | 5 | 26s | 285 | 0.00% | 26ms | 11.3 RPS |
-| stress | 50 | 123s | 4461 | 51.87% | 704ms | 36.6 RPS |
-| spike | 50 | 45s | 3159 | 9.18% | 628ms | 71.2 RPS |
+| baseline | 5 | 26s | 278 | 0.00% | 31ms | 11.0 RPS |
+| stress | 50 | 150s | 1427 | 5.68% | 11286ms | 9.5 RPS |
+| spike | 50 | 75s | 729 | 80.52% | 714ms | 9.9 RPS |
 
 ## Telemetry Analysis
 

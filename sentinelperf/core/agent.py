@@ -41,7 +41,8 @@ class GraphState(TypedDict, total=False):
     breaking_point_result: Optional[Dict[str, Any]]  # Full analysis result
     failure_timeline: Optional[List[Dict[str, Any]]]
     failure_category: Optional[str]
-    root_cause: Optional[RootCauseAnalysis]
+    failure_analysis: Optional[DeterministicFailureAnalysis]  # Rules-based analysis
+    root_cause: Optional[RootCauseAnalysis]  # LLM-assisted analysis
     errors: List[str]
     started_at: str
     completed_at: Optional[str]

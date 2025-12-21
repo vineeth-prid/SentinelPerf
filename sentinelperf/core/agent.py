@@ -15,6 +15,7 @@ from sentinelperf.core.state import (
     TelemetryInsight,
     LoadTestResult,
     BreakingPoint,
+    DeterministicFailureAnalysis,
     RootCauseAnalysis,
 )
 from sentinelperf.telemetry.otel import OpenTelemetrySource

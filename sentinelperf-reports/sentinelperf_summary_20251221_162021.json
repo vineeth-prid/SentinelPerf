@@ -1,0 +1,123 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-12-21T16:20:21.296049",
+  "status": "success",
+  "target": {
+    "url": "http://localhost:8080",
+    "environment": "test"
+  },
+  "execution": {
+    "started_at": "2025-12-21T16:20:21.293011",
+    "completed_at": null,
+    "duration_seconds": null,
+    "phase": "report_generation",
+    "errors": []
+  },
+  "telemetry": {
+    "available": true,
+    "source": "otel",
+    "endpoints_analyzed": 7,
+    "collection_timestamp": "2025-12-21T16:20:21.294363"
+  },
+  "breaking_point": {
+    "detected": false,
+    "message": "No breaking point detected within tested parameters"
+  },
+  "root_cause": {
+    "analyzed": true,
+    "primary_cause": "No breaking point detected (load execution mocked)",
+    "confidence": 0.0,
+    "llm_mode": "mock",
+    "reasoning_steps": [
+      "Step 1: Telemetry data ingested and analyzed",
+      "Step 2: Baseline behavior inferred from historical data",
+      "Step 3: Load tests generated based on baseline",
+      "Step 4: Load execution pending - results mocked"
+    ],
+    "supporting_evidence": [
+      "Baseline analyzed: 15 requests",
+      "Top endpoints: 7"
+    ],
+    "recommendations": [
+      {
+        "action": "Run with real k6 execution to detect actual breaking point",
+        "confidence": 1.0,
+        "priority": 1,
+        "estimated_impact": "High - enables actual performance analysis"
+      }
+    ]
+  },
+  "load_tests": [
+    {
+      "test_type": "load",
+      "vus": 1,
+      "duration": "60s",
+      "total_requests": 100,
+      "successful_requests": 95,
+      "failed_requests": 5,
+      "error_rate": 0.05,
+      "latency": {
+        "p50_ms": 150.5,
+        "p95_ms": 309.5,
+        "p99_ms": 309.5
+      },
+      "throughput_rps": 10,
+      "timestamp": "2025-12-21T16:20:21.295032"
+    },
+    {
+      "test_type": "stress",
+      "vus": 15,
+      "duration": "180s",
+      "total_requests": 1500,
+      "successful_requests": 1425,
+      "failed_requests": 75,
+      "error_rate": 0.05,
+      "latency": {
+        "p50_ms": 150.5,
+        "p95_ms": 309.5,
+        "p99_ms": 309.5
+      },
+      "throughput_rps": 150,
+      "timestamp": "2025-12-21T16:20:21.295035"
+    },
+    {
+      "test_type": "spike",
+      "vus": 15,
+      "duration": "120s",
+      "total_requests": 1500,
+      "successful_requests": 1425,
+      "failed_requests": 75,
+      "error_rate": 0.05,
+      "latency": {
+        "p50_ms": 150.5,
+        "p95_ms": 309.5,
+        "p99_ms": 309.5
+      },
+      "throughput_rps": 150,
+      "timestamp": "2025-12-21T16:20:21.295036"
+    },
+    {
+      "test_type": "adaptive",
+      "vus": 15,
+      "duration": "60s",
+      "total_requests": 1500,
+      "successful_requests": 1425,
+      "failed_requests": 75,
+      "error_rate": 0.05,
+      "latency": {
+        "p50_ms": 150.5,
+        "p95_ms": 309.5,
+        "p99_ms": 309.5
+      },
+      "throughput_rps": 150,
+      "timestamp": "2025-12-21T16:20:21.295039"
+    }
+  ],
+  "ci_cd": {
+    "exit_code": 0,
+    "thresholds_passed": true,
+    "summary": "FAIL: Breaking point at 0 VUs (none)",
+    "breaking_point_vus": 0,
+    "root_cause_confidence": 0.0
+  }
+}

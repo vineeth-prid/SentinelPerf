@@ -69,10 +69,10 @@ class LoadConfig(BaseModel):
 class LLMConfig(BaseModel):
     """LLM configuration for analysis"""
     provider: Literal["ollama", "rules", "mock"] = "ollama"
-    model: str = "qwen2.5:14b-instruct"
-    fallback_model: str = "qwen2.5:7b-instruct"
+    model: str = "qwen2.5:14b"  # User specifies as qwen2.5:14b
+    fallback_model: str = "qwen2.5:7b"
     base_url: str = "http://localhost:11434"
-    timeout: int = Field(default=120, ge=1, description="LLM request timeout in seconds")
+    timeout: int = Field(default=60, ge=1, description="LLM request timeout in seconds")
     temperature: float = Field(default=0.1, ge=0, le=2, description="LLM temperature")
 
 

@@ -21,7 +21,8 @@ from sentinelperf.telemetry.otel import OpenTelemetrySource
 from sentinelperf.telemetry.logs import AccessLogSource
 from sentinelperf.telemetry.prometheus import PrometheusSource
 from sentinelperf.telemetry.baseline import BaselineInference, BaselineBehavior
-from sentinelperf.load.generator import TestGenerator
+from sentinelperf.load.generator import TestGenerator, TestScript
+from sentinelperf.load.k6_executor import K6Executor, K6Result
 
 
 # TypedDict for LangGraph state (must use dict-like state)

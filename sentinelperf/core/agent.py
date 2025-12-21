@@ -88,7 +88,7 @@ class SentinelPerfAgent:
         )
         
         if self.verbose:
-            print(f"Starting SentinelPerf analysis...")
+            print("Starting SentinelPerf analysis...")
             print(f"Target: {initial_state.target_url}")
             print(f"LLM Mode: {self.llm_mode}")
         
@@ -125,7 +125,7 @@ class SentinelPerfAgent:
         state.phase = AgentPhase.TELEMETRY_ANALYSIS
         
         if self.verbose:
-            print(f"[1/7] Analyzing telemetry...")
+            print("[1/7] Analyzing telemetry...")
         
         # Determine active telemetry source
         telemetry_config = self.config.telemetry
@@ -153,7 +153,7 @@ class SentinelPerfAgent:
         state.phase = AgentPhase.TEST_GENERATION
         
         if self.verbose:
-            print(f"[2/7] Generating test configurations...")
+            print("[2/7] Generating test configurations...")
         
         # TODO: Implement test generation based on telemetry insights
         # For now, create placeholder tests
@@ -184,7 +184,7 @@ class SentinelPerfAgent:
         state.phase = AgentPhase.LOAD_EXECUTION
         
         if self.verbose:
-            print(f"[3/7] Executing load tests...")
+            print("[3/7] Executing load tests...")
         
         # TODO: Implement k6 execution
         # For now, create placeholder results
@@ -203,7 +203,7 @@ class SentinelPerfAgent:
         state.phase = AgentPhase.RESULTS_COLLECTION
         
         if self.verbose:
-            print(f"[4/7] Collecting results...")
+            print("[4/7] Collecting results...")
         
         # TODO: Implement result aggregation
         
@@ -214,7 +214,7 @@ class SentinelPerfAgent:
         state.phase = AgentPhase.BREAKING_POINT_DETECTION
         
         if self.verbose:
-            print(f"[5/7] Detecting breaking point...")
+            print("[5/7] Detecting breaking point...")
         
         # TODO: Implement breaking point detection
         # For now, create placeholder
@@ -235,7 +235,7 @@ class SentinelPerfAgent:
         state.phase = AgentPhase.ROOT_CAUSE_ANALYSIS
         
         if self.verbose:
-            print(f"[6/7] Analyzing root cause...")
+            print("[6/7] Analyzing root cause...")
         
         # TODO: Implement LLM-based root cause analysis
         # For now, create placeholder
@@ -252,7 +252,7 @@ class SentinelPerfAgent:
         state.phase = AgentPhase.REPORT_GENERATION
         
         if self.verbose:
-            print(f"[7/7] Generating reports...")
+            print("[7/7] Generating reports...")
         
         # TODO: Implement report generation
         # For now, mark complete

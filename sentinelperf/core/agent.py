@@ -182,6 +182,8 @@ class SentinelPerfAgent:
             generated_tests=d.get("generated_tests", []),
             load_results=d.get("load_results", []),
             breaking_point=d.get("breaking_point"),
+            failure_timeline=d.get("failure_timeline", []),
+            failure_category=d.get("failure_category"),
             root_cause=d.get("root_cause"),
             errors=d.get("errors", []),
         )

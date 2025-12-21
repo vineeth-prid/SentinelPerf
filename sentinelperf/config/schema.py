@@ -76,6 +76,13 @@ class LLMConfig(BaseModel):
     temperature: float = Field(default=0.1, ge=0, le=2, description="LLM temperature")
 
 
+class RecommendationsConfig(BaseModel):
+    """Recommendations configuration"""
+    enabled: bool = True  # Generate recommendations
+    polish_with_llm: bool = False  # LLM polishing OFF by default (token-safe)
+    max_recommendations: int = Field(default=5, ge=1, le=10, description="Max recommendations to show")
+
+
 class TargetConfig(BaseModel):
     """Target application configuration"""
     base_url: str = Field(..., description="Base URL of target application")

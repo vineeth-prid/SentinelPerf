@@ -270,19 +270,19 @@ class TestGenerator:
         stages = []
         current_vus = start_vus
         
-        # Initial ramp
-        stages.append(TestStage(duration="10s", target=start_vus))
+        # Initial ramp (shorter)
+        stages.append(TestStage(duration="5s", target=start_vus))
         
         # Incremental steps
         while current_vus < max_vus:
             current_vus = min(current_vus + step_vus, max_vus)
             stages.append(TestStage(duration=step_duration, target=current_vus))
         
-        # Hold at max
-        stages.append(TestStage(duration="30s", target=max_vus))
+        # Hold at max (shorter)
+        stages.append(TestStage(duration="10s", target=max_vus))
         
-        # Ramp down
-        stages.append(TestStage(duration="10s", target=0))
+        # Ramp down (shorter)
+        stages.append(TestStage(duration="5s", target=0))
         
         # More lenient thresholds for stress test - we expect failures
         thresholds = {

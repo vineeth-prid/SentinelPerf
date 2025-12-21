@@ -37,6 +37,9 @@ class GraphState(TypedDict, total=False):
     generated_tests: List[Dict[str, Any]]
     load_results: List[LoadTestResult]
     breaking_point: Optional[BreakingPoint]
+    breaking_point_result: Optional[Dict[str, Any]]  # Full analysis result
+    failure_timeline: Optional[List[Dict[str, Any]]]
+    failure_category: Optional[str]
     root_cause: Optional[RootCauseAnalysis]
     errors: List[str]
     started_at: str

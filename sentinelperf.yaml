@@ -6,7 +6,9 @@ environments:
       base_url: "http://localhost:8765"
       health_endpoint: "/"
       endpoints:
-        - "/"
+        - "/api/users"
+        - "/api/orders"
+        - "/api/products"
     
     auth:
       method: "none"
@@ -22,12 +24,12 @@ environments:
     
     load:
       initial_vus: 2
-      max_vus: 20  # Larger for stress testing
+      max_vus: 25
       ramp_duration: "10s"
       hold_duration: "10s"
-      error_rate_threshold: 0.1  # 10% threshold
+      error_rate_threshold: 0.1
       p95_latency_threshold_ms: 500
-      adaptive_step: 4
+      adaptive_step: 5
     
     llm:
       provider: "mock"

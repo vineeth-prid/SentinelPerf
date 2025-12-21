@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: spike_test
 // Type: spike
 // Target: http://localhost:8765
-// Generated: 2025-12-21T18:39:13.612529Z
+// Generated: 2025-12-21T18:59:16.343626Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';

@@ -339,7 +339,7 @@ class SentinelPerfAgent:
     
     def _node_test_generation(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate load, stress, and spike test configurations.
+        Generate baseline, stress, and spike test configurations.
         
         Uses baseline behavior to inform test parameters.
         """
@@ -387,67 +387,69 @@ class SentinelPerfAgent:
             print(f"  Initial VUs: {initial_vus}, Max VUs: {max_vus}")
             print(f"  Baseline P95: {baseline_metrics.get('latency_p95_ms', 'N/A')}ms")
         
-        # Generate load test (baseline capacity)
-        load_test = generator.generate_load_test(
+        # Clear previous scripts
+        self._generated_scripts = []
+        
+        # 1. Baseline test - validate current behavior
+        baseline_test = generator.generate_baseline_test(
             endpoints=endpoints,
-            initial_vus=1,
-            target_vus=initial_vus,
-            ramp_duration=self.config.load.ramp_duration,
-            hold_duration=self.config.load.hold_duration,
+            target_vus=max(1, initial_vus),
+            duration="30s",
             error_threshold=self.config.load.error_rate_threshold,
             p95_threshold_ms=self.config.load.p95_latency_threshold_ms,
         )
+        self._generated_scripts.append(baseline_test)
         
-        # Generate stress test (breaking point discovery)
+        # 2. Stress test - incremental load to find limits
         stress_test = generator.generate_stress_test(
             endpoints=endpoints,
-            max_vus=max_vus,
-            step_duration="30s",
-            steps=5,
-        )
-        
-        # Generate spike test (burst handling)
-        spike_test = generator.generate_spike_test(
-            endpoints=endpoints,
-            baseline_vus=initial_vus,
-            spike_vus=max_vus,
-            spike_duration="30s",
-        )
-        
-        # Generate adaptive test (fine-grained breaking point)
-        adaptive_test = generator.generate_adaptive_test(
-            endpoints=endpoints,
-            initial_vus=1,
+            start_vus=1,
             max_vus=max_vus,
             step_vus=self.config.load.adaptive_step,
-            step_duration="60s",
+            step_duration="30s",
         )
+        self._generated_scripts.append(stress_test)
         
-        # Store generated tests
+        # 3. Spike test - sudden burst
+        spike_test = generator.generate_spike_test(
+            endpoints=endpoints,
+            baseline_vus=max(1, initial_vus),
+            spike_vus=max_vus,
+            spike_duration="20s",
+        )
+        self._generated_scripts.append(spike_test)
+        
+        # Store test metadata in state (without script objects for serialization)
         state["generated_tests"] = [
             {
-                "type": "load",
-                "name": load_test.name,
-                "vus": initial_vus,
-                "duration": self.config.load.hold_duration,
-                "script": load_test,
-                "endpoints": endpoints,
-                "baseline_driven": True,
+                "type": baseline_test.test_type.value,
+                "name": baseline_test.name,
+                "vus": max(1, initial_vus),
+                "stages": len(baseline_test.stages),
+                "endpoints": len(endpoints),
             },
             {
-                "type": "stress",
+                "type": stress_test.test_type.value,
                 "name": stress_test.name,
                 "vus": max_vus,
-                "duration": "180s",  # 5 steps * 30s + hold + ramp
-                "script": stress_test,
-                "endpoints": endpoints,
-                "baseline_driven": True,
+                "stages": len(stress_test.stages),
+                "endpoints": len(endpoints),
             },
             {
-                "type": "spike",
+                "type": spike_test.test_type.value,
                 "name": spike_test.name,
                 "vus": max_vus,
-                "duration": "120s",
+                "stages": len(spike_test.stages),
+                "endpoints": len(endpoints),
+            },
+        ]
+        
+        if self.verbose:
+            print(f"  Generated {len(self._generated_scripts)} test scripts:")
+            for script in self._generated_scripts:
+                print(f"    - {script.test_type.value}: {script.name} ({len(script.stages)} stages)")
+        
+        return state
                 "script": spike_test,
                 "endpoints": endpoints,
                 "baseline_driven": True,

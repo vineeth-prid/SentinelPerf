@@ -1,44 +1,35 @@
-# SentinelPerf AI Test Configuration
-# Uses sample OTEL export file for testing
-
-version: "1.0"
-
 environments:
-  # Test environment with OTEL file
   test:
-    target:
-      base_url: "http://localhost:8080"
-      health_endpoint: "/health"
-      endpoints:
-        - "/api/users"
-        - "/api/orders"
-        - "/api/products"
-    
     auth:
-      method: "none"
-    
-    telemetry:
-      otel:
-        enabled: true
-        endpoint: "http://localhost:4318"
-        path: "/app/test_data/sample_otel_export.json"  # Use file for testing
-      logs:
-        enabled: false
-      prometheus:
-        enabled: false
-    
+      method: none
+    llm:
+      base_url: http://localhost:11434
+      model: qwen2.5:14b-instruct
+      provider: mock
+      temperature: 0.1
+      timeout: 120
     load:
+      adaptive_step: 10
+      error_rate_threshold: 0.05
+      hold_duration: 60s
       initial_vus: 1
       max_vus: 50
-      ramp_duration: "30s"
-      hold_duration: "60s"
-      error_rate_threshold: 0.05
       p95_latency_threshold_ms: 2000
-      adaptive_step: 10
-    
-    llm:
-      provider: "mock"
-      model: "qwen2.5:14b-instruct"
-      base_url: "http://localhost:11434"
-      timeout: 120
-      temperature: 0.1
+      ramp_duration: 30s
+    target:
+      base_url: http://localhost:9876
+      endpoints:
+      - /api/users
+      - /api/orders
+      - /api/products
+      health_endpoint: /health
+    telemetry:
+      logs:
+        enabled: false
+      otel:
+        enabled: true
+        endpoint: http://localhost:4318
+        path: /app/test_data/sample_otel_export.json
+      prometheus:
+        enabled: false
+version: '1.0'

@@ -1,13 +1,13 @@
 // SentinelPerf Generated Test: spike_test
 // Type: spike
-// Target: http://localhost:9876
-// Generated: 2025-12-21T16:35:53.273428Z
+// Target: http://localhost:8765
+// Generated: 2025-12-21T16:42:23.328669Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
-const BASE_URL = 'http://localhost:9876';
+const BASE_URL = 'http://localhost:8765';
 
 // Custom metrics for SentinelPerf
 const requestCount = new Counter('sentinelperf_requests');

@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from typing import Dict, Any, Literal, Optional
+from typing import Dict, Any, Literal, Optional, List, TypedDict
 from datetime import datetime
 
 from langgraph.graph import StateGraph, END
@@ -22,6 +22,23 @@ from sentinelperf.telemetry.logs import AccessLogSource
 from sentinelperf.telemetry.prometheus import PrometheusSource
 from sentinelperf.telemetry.baseline import BaselineInference, BaselineBehavior
 from sentinelperf.load.generator import TestGenerator
+
+
+# TypedDict for LangGraph state (must use dict-like state)
+class GraphState(TypedDict, total=False):
+    """State schema for LangGraph workflow"""
+    phase: str
+    environment: str
+    target_url: str
+    telemetry_source: Optional[str]
+    telemetry_insights: Optional[TelemetryInsight]
+    generated_tests: List[Dict[str, Any]]
+    load_results: List[LoadTestResult]
+    breaking_point: Optional[BreakingPoint]
+    root_cause: Optional[RootCauseAnalysis]
+    errors: List[str]
+    started_at: str
+    completed_at: Optional[str]
 
 
 class SentinelPerfAgent:

@@ -191,4 +191,8 @@ class JSONReporter:
                 state.root_cause.confidence
                 if state.root_cause else None
             ),
+            "recommendation_count": (
+                len(state.recommendations.get("recommendations", []))
+                if state.recommendations else 0
+            ),
         }

@@ -4,20 +4,37 @@ from typing import Optional
 from sentinelperf.core.state import ExecutionResult, AgentPhase
 
 
+# ANSI color codes
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+CYAN = "\033[96m"
+RESET = "\033[0m"
+BOLD = "\033[1m"
+
+
 def format_console_output(result: ExecutionResult) -> str:
     """
     Format execution result for console output.
     
-    Returns max 5 lines as per requirements.
+    Returns max 5 lines as per requirements:
+    1. Status line (pass/fail with target)
+    2. Breaking point info (if detected)
+    3. Root cause with confidence
+    4. Warnings count (if any)
+    5. Report location
     """
     lines = []
     state = result.state
     
-    # Line 1: Status
+    # Line 1: Status with clear pass/fail indication
     if result.success:
-        lines.append(f"\033[92m✓\033[0m SentinelPerf analysis complete: {state.target_url}")
+        if state.breaking_point and state.breaking_point.vus_at_break > 0:
+            lines.append(f"{YELLOW}⚠{RESET} SentinelPerf analysis complete: {state.target_url}")
+        else:
+            lines.append(f"{GREEN}✓{RESET} SentinelPerf analysis complete: {state.target_url}")
     else:
-        lines.append(f"\033[91m✗\033[0m SentinelPerf analysis failed: {state.target_url}")
+        lines.append(f"{RED}✗{RESET} SentinelPerf analysis failed: {state.target_url}")
     
     # Line 2: Breaking point (if detected)
     if state.breaking_point and state.breaking_point.vus_at_break > 0:
@@ -27,19 +44,18 @@ def format_console_output(result: ExecutionResult) -> str:
             f"({bp.failure_type})"
         )
     
-    # Line 3: Root cause (if analyzed)
+    # Line 3: Root cause with confidence bar
     if state.root_cause and state.root_cause.primary_cause:
         rc = state.root_cause
         confidence_bar = "●" * int(rc.confidence * 5) + "○" * (5 - int(rc.confidence * 5))
-        lines.append(
-            f"  Root cause: {rc.primary_cause[:60]}... [{confidence_bar}]"
-            if len(rc.primary_cause) > 60
-            else f"  Root cause: {rc.primary_cause} [{confidence_bar}]"
-        )
+        cause = rc.primary_cause
+        if len(cause) > 55:
+            cause = cause[:55] + "..."
+        lines.append(f"  Root cause: {cause} [{confidence_bar}]")
     
-    # Line 4: Errors (if any)
+    # Line 4: Warnings (if any)
     if state.errors:
-        lines.append(f"  \033[93mWarnings: {len(state.errors)}\033[0m")
+        lines.append(f"  {YELLOW}Warnings: {len(state.errors)}{RESET}")
     
     # Line 5: Report location
     if result.markdown_report_path:
@@ -69,6 +85,7 @@ def print_progress(phase: AgentPhase, message: str, verbose: bool = False) -> No
             AgentPhase.RESULTS_COLLECTION: "📈",
             AgentPhase.BREAKING_POINT_DETECTION: "🎯",
             AgentPhase.ROOT_CAUSE_ANALYSIS: "🔍",
+            AgentPhase.RECOMMENDATIONS: "💡",
             AgentPhase.REPORT_GENERATION: "📄",
             AgentPhase.COMPLETE: "✅",
             AgentPhase.ERROR: "❌",

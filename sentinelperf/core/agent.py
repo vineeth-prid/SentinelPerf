@@ -654,83 +654,118 @@ class SentinelPerfAgent:
     
     def _node_root_cause_analysis(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Analyze root cause based on breaking point and timeline.
+        Perform LLM-assisted root cause analysis.
         
-        Uses classification and timeline to build explanation.
+        Phase 5 Scope:
+        - EXPLAIN why the classification makes sense
+        - CONNECT timeline events causally
+        - TRANSLATE signals into human reasoning
+        - ASSIGN explanation confidence
+        
+        NOT allowed:
+        - Change classification
+        - Invent metrics
+        - Override breaking point
+        - Suggest fixes (Phase 6)
         """
         state["phase"] = AgentPhase.ROOT_CAUSE_ANALYSIS.value
         
         if self.verbose:
             print("[6/7] Analyzing root cause...")
         
+        # Get deterministic analysis data
         breaking_point = state.get("breaking_point")
         failure_category = state.get("failure_category", FailureCategory.NO_FAILURE.value)
         timeline = state.get("failure_timeline", [])
         bp_result = state.get("breaking_point_result", {})
+        load_results = state.get("load_results", [])
         
-        # Build root cause analysis based on classification
-        reasoning_steps = self._build_reasoning_steps(failure_category, timeline, bp_result)
+        # Store deterministic failure analysis first
         evidence = self._collect_evidence(state)
-        recommendations = self._generate_recommendations(failure_category, breaking_point)
-        
-        # Determine primary cause description
-        primary_cause = self._get_primary_cause_description(failure_category, breaking_point)
-        
-        # Calculate confidence based on data quality
-        confidence = self._calculate_root_cause_confidence(bp_result, failure_category)
-        
-        state["root_cause"] = RootCauseAnalysis(
-            primary_cause=primary_cause,
-            confidence=confidence,
+        state["failure_analysis"] = DeterministicFailureAnalysis(
+            failure_category=failure_category,
+            category_confidence=bp_result.get("category_confidence", 0.5),
+            classification_rationale=bp_result.get("classification_rationale", []),
             supporting_evidence=evidence,
-            reasoning_steps=reasoning_steps,
-            recommendations=recommendations,
-            llm_mode=self.llm_mode,
+        )
+        
+        # Build baseline summary for LLM input
+        baseline_summary = {}
+        baseline_confidence = 0.0
+        if self._baseline:
+            baseline_summary = {
+                "total_requests": self._baseline.total_requests,
+                "avg_rps": self._baseline.global_avg_rps,
+                "peak_rps": self._baseline.global_peak_rps,
+                "error_rate": self._baseline.global_error_rate,
+                "latency_p50_ms": self._baseline.global_latency_p50,
+                "latency_p95_ms": self._baseline.global_latency_p95,
+                "top_endpoints_count": len(self._baseline.top_endpoints),
+            }
+            if self._baseline.confidence:
+                baseline_confidence = self._baseline.confidence.score
+        
+        # Build breaking point dict for LLM input
+        breaking_point_dict = None
+        if breaking_point:
+            breaking_point_dict = {
+                "vus_at_break": breaking_point.vus_at_break,
+                "rps_at_break": breaking_point.rps_at_break,
+                "failure_type": breaking_point.failure_type,
+                "threshold_exceeded": breaking_point.threshold_exceeded,
+                "observed_value": breaking_point.observed_value,
+                "threshold_value": breaking_point.threshold_value,
+                "confidence": breaking_point.confidence,
+            }
+        
+        # Build observed metrics for LLM input
+        observed_metrics = {}
+        if load_results:
+            observed_metrics = {
+                "total_requests": sum(r.total_requests for r in load_results),
+                "total_errors": sum(r.failed_requests for r in load_results),
+                "avg_error_rate": sum(r.error_rate for r in load_results) / len(load_results),
+                "max_p95_latency_ms": max(r.latency_p95_ms for r in load_results),
+                "max_vus": max(r.vus for r in load_results),
+                "test_types": list(set(r.test_type for r in load_results)),
+            }
+        
+        # Run root cause analysis (LLM or rules-based)
+        from sentinelperf.analysis.root_cause import run_root_cause_analysis
+        
+        llm_output, mode, model, latency_ms = run_root_cause_analysis(
+            config=self.config.llm,
+            baseline_summary=baseline_summary,
+            baseline_confidence=baseline_confidence,
+            breaking_point=breaking_point_dict,
+            failure_timeline=timeline,
+            failure_classification=failure_category,
+            classification_rationale=bp_result.get("classification_rationale", []),
+            observed_metrics=observed_metrics,
+            verbose=self.verbose,
+        )
+        
+        # Store root cause analysis result
+        state["root_cause"] = RootCauseAnalysis(
+            root_cause_summary=llm_output.root_cause_summary,
+            primary_cause=llm_output.primary_cause,
+            contributing_factors=llm_output.contributing_factors,
+            confidence=llm_output.confidence,
+            assumptions=llm_output.assumptions,
+            limitations=llm_output.limitations,
+            llm_mode=mode,
+            llm_model=model,
+            llm_latency_ms=latency_ms,
         )
         
         if self.verbose:
-            print(f"  Primary cause: {primary_cause}")
-            print(f"  Confidence: {confidence:.0%}")
-            print(f"  Recommendations: {len(recommendations)}")
+            print(f"  Mode: {mode}" + (f" ({model})" if model else ""))
+            print(f"  Primary cause: {llm_output.primary_cause}")
+            print(f"  Confidence: {llm_output.confidence:.0%}")
+            if llm_output.limitations:
+                print(f"  Limitations: {len(llm_output.limitations)}")
         
         return state
-    
-    def _build_reasoning_steps(
-        self,
-        category: str,
-        timeline: List[Dict[str, Any]],
-        bp_result: Dict[str, Any],
-    ) -> List[str]:
-        """Build step-by-step reasoning from timeline and classification"""
-        steps = []
-        
-        # Step 1: What data we analyzed
-        steps.append("Step 1: Analyzed load test results from baseline, stress, and spike tests")
-        
-        # Step 2: What we observed in timeline
-        if timeline:
-            load_events = [e for e in timeline if e.get("event_type") == "load_change"]
-            violation_events = [e for e in timeline if e.get("event_type") != "load_change"]
-            steps.append(f"Step 2: Observed {len(load_events)} load changes and {len(violation_events)} violations")
-            
-            # First violation
-            if violation_events:
-                first_v = violation_events[0]
-                steps.append(f"Step 3: First violation at {first_v.get('timestamp')}: {first_v.get('description')}")
-        else:
-            steps.append("Step 2: No violations observed during testing")
-        
-        # Step 3: Classification rationale
-        rationale = bp_result.get("classification_rationale", [])
-        if rationale:
-            steps.append(f"Step 4: Classification rationale - {rationale[0]}")
-            for r in rationale[1:3]:  # Add up to 2 more
-                steps.append(f"         {r}")
-        
-        # Step 4: Conclusion
-        steps.append(f"Step 5: Classified as {category}")
-        
-        return steps
     
     def _collect_evidence(self, state: Dict[str, Any]) -> List[str]:
         """Collect supporting evidence from state"""
@@ -759,150 +794,6 @@ class SentinelPerfAgent:
             evidence.extend(breaking_point.signals[:3])  # Top 3 signals
         
         return evidence
-    
-    def _generate_recommendations(
-        self,
-        category: str,
-        breaking_point: Optional[BreakingPoint],
-    ) -> List[Dict[str, Any]]:
-        """Generate recommendations based on failure category"""
-        recommendations = []
-        
-        if category == FailureCategory.CAPACITY_EXHAUSTION.value:
-            recommendations.append({
-                "action": "Increase resource allocation (CPU, memory, connections)",
-                "rationale": "System hit resource limits before errors appeared",
-                "confidence": 0.8,
-                "priority": 1,
-                "estimated_impact": "High - directly addresses capacity bottleneck",
-            })
-            recommendations.append({
-                "action": "Implement horizontal scaling or auto-scaling",
-                "rationale": "Throughput plateaued indicating single-instance limits",
-                "confidence": 0.7,
-                "priority": 2,
-                "estimated_impact": "High - enables linear scaling",
-            })
-        
-        elif category == FailureCategory.LATENCY_AMPLIFICATION.value:
-            recommendations.append({
-                "action": "Optimize slow database queries or external calls",
-                "rationale": "Latency increased without errors, indicating queuing",
-                "confidence": 0.75,
-                "priority": 1,
-                "estimated_impact": "High - reduces queuing at bottleneck",
-            })
-            recommendations.append({
-                "action": "Add caching layer for frequently accessed data",
-                "rationale": "Reduce load on slow backend services",
-                "confidence": 0.7,
-                "priority": 2,
-                "estimated_impact": "Medium - depends on cache hit rate",
-            })
-        
-        elif category == FailureCategory.ERROR_DRIVEN_COLLAPSE.value:
-            recommendations.append({
-                "action": "Implement circuit breaker pattern",
-                "rationale": "Errors cascaded causing system collapse",
-                "confidence": 0.8,
-                "priority": 1,
-                "estimated_impact": "High - prevents cascade failures",
-            })
-            recommendations.append({
-                "action": "Add rate limiting at entry points",
-                "rationale": "Protect system from overload-induced errors",
-                "confidence": 0.75,
-                "priority": 2,
-                "estimated_impact": "Medium - trades availability for stability",
-            })
-        
-        elif category == FailureCategory.INSTABILITY_UNDER_BURST.value:
-            recommendations.append({
-                "action": "Implement request queuing with backpressure",
-                "rationale": "System stable under gradual load but fails on burst",
-                "confidence": 0.8,
-                "priority": 1,
-                "estimated_impact": "High - smooths traffic spikes",
-            })
-            recommendations.append({
-                "action": "Pre-warm connections and caches before expected spikes",
-                "rationale": "Cold start issues may amplify burst impact",
-                "confidence": 0.65,
-                "priority": 2,
-                "estimated_impact": "Medium - requires spike prediction",
-            })
-        
-        elif category == FailureCategory.ALREADY_DEGRADED_BASELINE.value:
-            recommendations.append({
-                "action": "Investigate and fix baseline performance issues first",
-                "rationale": "System already degraded before load testing",
-                "confidence": 0.9,
-                "priority": 1,
-                "estimated_impact": "Critical - must fix before further testing",
-            })
-        
-        else:  # NO_FAILURE
-            if breaking_point is None:
-                recommendations.append({
-                    "action": "Increase load test intensity to find actual limits",
-                    "rationale": "No breaking point found within test parameters",
-                    "confidence": 0.7,
-                    "priority": 1,
-                    "estimated_impact": "Medium - helps establish true capacity",
-                })
-        
-        return recommendations
-    
-    def _get_primary_cause_description(
-        self,
-        category: str,
-        breaking_point: Optional[BreakingPoint],
-    ) -> str:
-        """Get human-readable primary cause description"""
-        descriptions = {
-            FailureCategory.CAPACITY_EXHAUSTION.value: 
-                "System reached resource capacity limits",
-            FailureCategory.LATENCY_AMPLIFICATION.value:
-                "Latency degradation under load (queuing at bottleneck)",
-            FailureCategory.ERROR_DRIVEN_COLLAPSE.value:
-                "Error cascade caused system collapse",
-            FailureCategory.INSTABILITY_UNDER_BURST.value:
-                "System unstable under sudden traffic bursts",
-            FailureCategory.ALREADY_DEGRADED_BASELINE.value:
-                "Baseline performance already degraded before load test",
-            FailureCategory.NO_FAILURE.value:
-                "No failure detected within test parameters",
-        }
-        
-        base_desc = descriptions.get(category, "Unknown failure mode")
-        
-        if breaking_point:
-            return f"{base_desc} (at {breaking_point.vus_at_break} VUs, {breaking_point.rps_at_break:.1f} RPS)"
-        
-        return base_desc
-    
-    def _calculate_root_cause_confidence(
-        self,
-        bp_result: Dict[str, Any],
-        category: str,
-    ) -> float:
-        """Calculate confidence in root cause analysis"""
-        # Start with category confidence from detection
-        confidence = bp_result.get("category_confidence", 0.5)
-        
-        # Adjust based on data quality
-        if self._baseline and self._baseline.confidence:
-            if self._baseline.confidence.level == "VERY_LOW":
-                confidence *= 0.7  # Reduce confidence with poor baseline
-            elif self._baseline.confidence.level == "LOW":
-                confidence *= 0.85
-        
-        # Higher confidence for clear categories
-        if category in (FailureCategory.ALREADY_DEGRADED_BASELINE.value,
-                       FailureCategory.ERROR_DRIVEN_COLLAPSE.value):
-            confidence = min(confidence * 1.1, 0.95)
-        
-        return min(confidence, 0.95)
     
     def _node_report_generation(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Generate output reports"""

@@ -172,10 +172,10 @@ class SentinelPerfAgent:
         return state
     
     # ===========================================
-    # Node Implementations
+    # Node Implementations (work with dict state)
     # ===========================================
     
-    def _node_telemetry_analysis(self, state: AgentState) -> AgentState:
+    def _node_telemetry_analysis(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analyze telemetry data to infer traffic patterns.
         
@@ -183,7 +183,7 @@ class SentinelPerfAgent:
         2. Fetch spans/metrics
         3. Infer baseline behavior (rules-only)
         """
-        state.phase = AgentPhase.TELEMETRY_ANALYSIS
+        state["phase"] = AgentPhase.TELEMETRY_ANALYSIS.value
         
         if self.verbose:
             print("[1/7] Analyzing telemetry...")
@@ -193,10 +193,11 @@ class SentinelPerfAgent:
         active_source = telemetry_config.get_active_source()
         
         if not active_source:
-            state.add_error("No telemetry source configured or enabled")
+            state["errors"].append("No telemetry source configured or enabled")
+            state["phase"] = AgentPhase.ERROR.value
             return state
         
-        state.telemetry_source = active_source
+        state["telemetry_source"] = active_source
         
         if self.verbose:
             print(f"  Using telemetry source: {active_source}")

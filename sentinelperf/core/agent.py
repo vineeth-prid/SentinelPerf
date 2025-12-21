@@ -105,6 +105,7 @@ class SentinelPerfAgent:
         workflow.add_node("results_collection", self._node_results_collection)
         workflow.add_node("breaking_point_detection", self._node_breaking_point_detection)
         workflow.add_node("root_cause_analysis", self._node_root_cause_analysis)
+        workflow.add_node("recommendations", self._node_recommendations)
         workflow.add_node("report_generation", self._node_report_generation)
         
         # Define edges (workflow sequence)
@@ -114,7 +115,8 @@ class SentinelPerfAgent:
         workflow.add_edge("load_execution", "results_collection")
         workflow.add_edge("results_collection", "breaking_point_detection")
         workflow.add_edge("breaking_point_detection", "root_cause_analysis")
-        workflow.add_edge("root_cause_analysis", "report_generation")
+        workflow.add_edge("root_cause_analysis", "recommendations")
+        workflow.add_edge("recommendations", "report_generation")
         workflow.add_edge("report_generation", END)
         
         return workflow.compile()

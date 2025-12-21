@@ -312,13 +312,13 @@ class SentinelPerfAgent:
                 print(f"  Error fetching telemetry: {e}")
             return None, None
     
-    def _node_test_generation(self, state: AgentState) -> AgentState:
+    def _node_test_generation(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate load, stress, and spike test configurations.
         
         Uses baseline behavior to inform test parameters.
         """
-        state.phase = AgentPhase.TEST_GENERATION
+        state["phase"] = AgentPhase.TEST_GENERATION.value
         
         if self.verbose:
             print("[2/7] Generating test configurations...")
@@ -399,7 +399,7 @@ class SentinelPerfAgent:
         )
         
         # Store generated tests
-        state.generated_tests = [
+        state["generated_tests"] = [
             {
                 "type": "load",
                 "name": load_test.name,
@@ -439,8 +439,8 @@ class SentinelPerfAgent:
         ]
         
         if self.verbose:
-            print(f"  Generated {len(state.generated_tests)} test configurations")
-            for test in state.generated_tests:
+            print(f"  Generated {len(state['generated_tests'])} test configurations")
+            for test in state["generated_tests"]:
                 print(f"    - {test['type']}: {test['vus']} VUs, {test['duration']}")
         
         return state

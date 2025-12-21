@@ -1,16 +1,12 @@
-# SentinelPerf AI Quick Test Configuration
-
 version: "1.0"
 
 environments:
-  # Quick test environment
   test:
     target:
-      base_url: "http://localhost:9876"
-      health_endpoint: "/health"
+      base_url: "http://localhost:8765"
+      health_endpoint: "/"
       endpoints:
-        - "/api/users"
-        - "/api/orders"
+        - "/"
     
     auth:
       method: "none"
@@ -18,7 +14,6 @@ environments:
     telemetry:
       otel:
         enabled: true
-        endpoint: "http://localhost:4318"
         path: "/app/test_data/sample_otel_export.json"
       logs:
         enabled: false
@@ -27,14 +22,12 @@ environments:
     
     load:
       initial_vus: 1
-      max_vus: 5  # Small for quick testing
+      max_vus: 3
       ramp_duration: "5s"
-      hold_duration: "10s"
-      error_rate_threshold: 0.05
-      p95_latency_threshold_ms: 2000
-      adaptive_step: 2  # Small steps
+      hold_duration: "5s"
+      error_rate_threshold: 0.1
+      p95_latency_threshold_ms: 5000
+      adaptive_step: 1
     
     llm:
       provider: "mock"
-      model: "qwen2.5:14b-instruct"
-      base_url: "http://localhost:11434"

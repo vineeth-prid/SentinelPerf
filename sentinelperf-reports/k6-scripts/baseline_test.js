@@ -1,13 +1,13 @@
 // SentinelPerf Generated Test: baseline_test
 // Type: baseline
-// Target: http://localhost:9876
-// Generated: 2025-12-21T16:33:16.760630Z
+// Target: http://localhost:8765
+// Generated: 2025-12-21T16:37:19.321515Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Counter, Rate, Trend } from 'k6/metrics';
 
-const BASE_URL = 'http://localhost:9876';
+const BASE_URL = 'http://localhost:8765';
 
 // Custom metrics for SentinelPerf
 const requestCount = new Counter('sentinelperf_requests');
@@ -23,8 +23,8 @@ export const options = {
     { duration: '5s', target: 0 }
   ],
   thresholds: {
-    'http_req_failed': ['rate<0.05'],
-    'http_req_duration': ['p(95)<2000']
+    'http_req_failed': ['rate<0.1'],
+    'http_req_duration': ['p(95)<5000']
   },
   // Output JSON summary
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'],

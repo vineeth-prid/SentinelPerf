@@ -23,6 +23,7 @@ from sentinelperf.telemetry.prometheus import PrometheusSource
 from sentinelperf.telemetry.baseline import BaselineInference, BaselineBehavior
 from sentinelperf.load.generator import TestGenerator, TestScript
 from sentinelperf.load.k6_executor import K6Executor, K6Result
+from sentinelperf.analysis.breaking_point import BreakingPointDetector, BreakingPointResult, FailureCategory
 
 
 # TypedDict for LangGraph state (must use dict-like state)

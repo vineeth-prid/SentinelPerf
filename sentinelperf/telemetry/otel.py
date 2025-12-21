@@ -191,8 +191,22 @@ class OpenTelemetrySource(TelemetrySource):
                     span = self._parse_span(item)
                     if span:
                         spans.append(span)
+            elif content.startswith("{"):
+                # Single JSON object - could be OTEL export format
+                try:
+                    data = json.loads(content)
+                    if "resourceSpans" in data:
+                        # OTEL export format
+                        spans.extend(self._parse_otel_export(data))
+                    else:
+                        # Single span
+                        span = self._parse_span(data)
+                        if span:
+                            spans.append(span)
+                except json.JSONDecodeError:
+                    pass
             else:
-                # Newline-delimited JSON or OTEL export format
+                # Newline-delimited JSON
                 for line in content.split("\n"):
                     if not line.strip():
                         continue

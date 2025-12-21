@@ -1,7 +1,8 @@
 """LangGraph-based agent orchestration for SentinelPerf"""
 
+import asyncio
 from pathlib import Path
-from typing import Dict, Any, Literal
+from typing import Dict, Any, Literal, Optional
 from datetime import datetime
 
 from langgraph.graph import StateGraph, END
@@ -16,6 +17,11 @@ from sentinelperf.core.state import (
     BreakingPoint,
     RootCauseAnalysis,
 )
+from sentinelperf.telemetry.otel import OpenTelemetrySource
+from sentinelperf.telemetry.logs import AccessLogSource
+from sentinelperf.telemetry.prometheus import PrometheusSource
+from sentinelperf.telemetry.baseline import BaselineInference, BaselineBehavior
+from sentinelperf.load.generator import TestGenerator
 
 
 class SentinelPerfAgent:
@@ -23,8 +29,8 @@ class SentinelPerfAgent:
     Main agent orchestrator using LangGraph.
     
     Coordinates the autonomous performance analysis workflow:
-    1. Telemetry Analysis - Infer traffic patterns
-    2. Test Generation - Generate load/stress/spike tests
+    1. Telemetry Analysis - Infer traffic patterns from OTEL/logs/prometheus
+    2. Test Generation - Generate load/stress/spike tests based on baseline
     3. Load Execution - Execute tests via k6
     4. Results Collection - Aggregate metrics
     5. Breaking Point Detection - Find failure threshold
@@ -46,6 +52,10 @@ class SentinelPerfAgent:
         
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize components
+        self.baseline_inference = BaselineInference(top_n=10)
+        self._baseline: Optional[BaselineBehavior] = None
         
         # Build the agent graph
         self.graph = self._build_graph()
@@ -117,11 +127,17 @@ class SentinelPerfAgent:
             )
     
     # ===========================================
-    # Node Implementations (Stubs for skeleton)
+    # Node Implementations
     # ===========================================
     
     def _node_telemetry_analysis(self, state: AgentState) -> AgentState:
-        """Analyze telemetry data to infer traffic patterns"""
+        """
+        Analyze telemetry data to infer traffic patterns.
+        
+        1. Connect to telemetry source (OTEL > logs > prometheus)
+        2. Fetch spans/metrics
+        3. Infer baseline behavior (rules-only)
+        """
         state.phase = AgentPhase.TELEMETRY_ANALYSIS
         
         if self.verbose:
@@ -137,64 +153,317 @@ class SentinelPerfAgent:
         
         state.telemetry_source = active_source
         
-        # TODO: Implement actual telemetry ingestion
-        # For now, create placeholder insight
+        if self.verbose:
+            print(f"  Using telemetry source: {active_source}")
+        
+        # Run async telemetry fetch
+        try:
+            telemetry_data, baseline = asyncio.get_event_loop().run_until_complete(
+                self._fetch_and_analyze_telemetry(active_source)
+            )
+        except RuntimeError:
+            # No event loop, create one
+            telemetry_data, baseline = asyncio.run(
+                self._fetch_and_analyze_telemetry(active_source)
+            )
+        
+        if telemetry_data is None:
+            state.add_error(f"Failed to fetch telemetry from {active_source}")
+            return state
+        
+        # Store baseline for later phases
+        self._baseline = baseline
+        
+        # Convert to TelemetryInsight for state
         state.telemetry_insights = TelemetryInsight(
             source=active_source,
-            endpoints=[],
-            traffic_patterns={},
-            baseline_metrics={},
+            endpoints=[
+                {
+                    "path": ep.path,
+                    "method": ep.method,
+                    "request_count": ep.request_count,
+                    "latency_p95": ep.latency_p95,
+                    "error_rate": ep.error_rate,
+                    "weight": ep.load_weight,
+                }
+                for ep in baseline.top_endpoints
+            ],
+            traffic_patterns={
+                "type": baseline.traffic_patterns[0].pattern_type if baseline.traffic_patterns else "unknown",
+                "avg_rps": baseline.global_avg_rps,
+                "peak_rps": baseline.global_peak_rps,
+            },
+            baseline_metrics={
+                "total_requests": baseline.total_requests,
+                "global_error_rate": baseline.global_error_rate,
+                "latency_p50": baseline.global_latency_p50,
+                "latency_p95": baseline.global_latency_p95,
+                "latency_p99": baseline.global_latency_p99,
+            },
         )
+        
+        if self.verbose:
+            print(f"  Analyzed {baseline.total_requests} requests")
+            print(f"  Found {len(baseline.top_endpoints)} top endpoints")
+            print(f"  Baseline RPS: {baseline.global_avg_rps:.2f} avg, {baseline.global_peak_rps:.2f} peak")
+            print(f"  Latency P95: {baseline.global_latency_p95:.1f}ms")
         
         return state
     
+    async def _fetch_and_analyze_telemetry(self, source_type: str):
+        """Fetch telemetry and infer baseline"""
+        
+        # Create appropriate source
+        if source_type == "otel":
+            source_config = self.config.telemetry.otel
+            source = OpenTelemetrySource(source_config)
+        elif source_type == "logs":
+            source_config = self.config.telemetry.logs
+            source = AccessLogSource(source_config)
+        elif source_type == "prometheus":
+            source_config = self.config.telemetry.prometheus
+            source = PrometheusSource(source_config)
+        else:
+            return None, None
+        
+        try:
+            # Connect and fetch
+            connected = await source.connect()
+            if not connected:
+                return None, None
+            
+            # Fetch telemetry data
+            telemetry_data = await source.fetch_data()
+            
+            if not telemetry_data.endpoints:
+                if self.verbose:
+                    print(f"  Warning: No endpoints found in {source_type} telemetry")
+                # Return empty baseline instead of failure
+                from sentinelperf.telemetry.base import TelemetryData
+                telemetry_data = TelemetryData(
+                    source=source_type,
+                    collection_start=datetime.utcnow(),
+                    collection_end=datetime.utcnow(),
+                )
+            
+            # Infer traffic patterns
+            patterns = await source.infer_traffic_patterns(telemetry_data)
+            telemetry_data.traffic_patterns = patterns
+            
+            # Infer baseline behavior
+            baseline = self.baseline_inference.infer(telemetry_data)
+            
+            if self.verbose and baseline.top_endpoints:
+                print(self.baseline_inference.print_summary(baseline))
+            
+            await source.close()
+            
+            return telemetry_data, baseline
+            
+        except Exception as e:
+            if self.verbose:
+                print(f"  Error fetching telemetry: {e}")
+            return None, None
+    
     def _node_test_generation(self, state: AgentState) -> AgentState:
-        """Generate load, stress, and spike test configurations"""
+        """
+        Generate load, stress, and spike test configurations.
+        
+        Uses baseline behavior to inform test parameters.
+        """
         state.phase = AgentPhase.TEST_GENERATION
         
         if self.verbose:
             print("[2/7] Generating test configurations...")
         
-        # TODO: Implement test generation based on telemetry insights
-        # For now, create placeholder tests
-        load_config = self.config.load
+        # Get baseline data for load planning
+        load_plan_input = self._get_load_plan_input()
         
+        # Get auth headers from config
+        auth_headers = self._get_auth_headers()
+        
+        # Initialize test generator
+        generator = TestGenerator(
+            base_url=self.config.target.base_url,
+            auth_headers=auth_headers,
+        )
+        
+        # Get endpoints for testing
+        endpoints = load_plan_input.get("endpoints", [])
+        if not endpoints:
+            # Fallback to configured endpoints
+            if self.config.target.endpoints:
+                endpoints = [
+                    {"path": ep, "method": "GET", "weight": 1}
+                    for ep in self.config.target.endpoints
+                ]
+            else:
+                # Use health endpoint as fallback
+                endpoints = [
+                    {"path": self.config.target.health_endpoint, "method": "GET", "weight": 1}
+                ]
+        
+        # Get recommended VUs from baseline
+        initial_vus = load_plan_input.get("recommended_initial_vus", self.config.load.initial_vus)
+        max_vus = load_plan_input.get("recommended_max_vus", self.config.load.max_vus)
+        
+        # Generate tests based on baseline
+        baseline_metrics = load_plan_input.get("baseline", {})
+        
+        if self.verbose:
+            print(f"  Endpoints to test: {len(endpoints)}")
+            print(f"  Initial VUs: {initial_vus}, Max VUs: {max_vus}")
+            print(f"  Baseline P95: {baseline_metrics.get('latency_p95_ms', 'N/A')}ms")
+        
+        # Generate load test (baseline capacity)
+        load_test = generator.generate_load_test(
+            endpoints=endpoints,
+            initial_vus=1,
+            target_vus=initial_vus,
+            ramp_duration=self.config.load.ramp_duration,
+            hold_duration=self.config.load.hold_duration,
+            error_threshold=self.config.load.error_rate_threshold,
+            p95_threshold_ms=self.config.load.p95_latency_threshold_ms,
+        )
+        
+        # Generate stress test (breaking point discovery)
+        stress_test = generator.generate_stress_test(
+            endpoints=endpoints,
+            max_vus=max_vus,
+            step_duration="30s",
+            steps=5,
+        )
+        
+        # Generate spike test (burst handling)
+        spike_test = generator.generate_spike_test(
+            endpoints=endpoints,
+            baseline_vus=initial_vus,
+            spike_vus=max_vus,
+            spike_duration="30s",
+        )
+        
+        # Generate adaptive test (fine-grained breaking point)
+        adaptive_test = generator.generate_adaptive_test(
+            endpoints=endpoints,
+            initial_vus=1,
+            max_vus=max_vus,
+            step_vus=self.config.load.adaptive_step,
+            step_duration="60s",
+        )
+        
+        # Store generated tests
         state.generated_tests = [
             {
                 "type": "load",
-                "vus": load_config.initial_vus,
-                "duration": load_config.hold_duration,
+                "name": load_test.name,
+                "vus": initial_vus,
+                "duration": self.config.load.hold_duration,
+                "script": load_test,
+                "endpoints": endpoints,
+                "baseline_driven": True,
             },
             {
                 "type": "stress",
-                "vus": load_config.max_vus,
-                "duration": load_config.hold_duration,
+                "name": stress_test.name,
+                "vus": max_vus,
+                "duration": "180s",  # 5 steps * 30s + hold + ramp
+                "script": stress_test,
+                "endpoints": endpoints,
+                "baseline_driven": True,
             },
             {
                 "type": "spike",
-                "vus": load_config.max_vus * 2,
-                "duration": "30s",
+                "name": spike_test.name,
+                "vus": max_vus,
+                "duration": "120s",
+                "script": spike_test,
+                "endpoints": endpoints,
+                "baseline_driven": True,
+            },
+            {
+                "type": "adaptive",
+                "name": adaptive_test.name,
+                "vus": max_vus,
+                "duration": f"{(max_vus // self.config.load.adaptive_step) * 60}s",
+                "script": adaptive_test,
+                "endpoints": endpoints,
+                "baseline_driven": True,
             },
         ]
         
+        if self.verbose:
+            print(f"  Generated {len(state.generated_tests)} test configurations")
+            for test in state.generated_tests:
+                print(f"    - {test['type']}: {test['vus']} VUs, {test['duration']}")
+        
         return state
     
+    def _get_load_plan_input(self) -> Dict[str, Any]:
+        """Get load plan input from baseline or defaults"""
+        if self._baseline:
+            return self._baseline.to_load_plan_input()
+        
+        # Return defaults if no baseline available
+        return {
+            "baseline": {
+                "avg_rps": 0,
+                "peak_rps": 0,
+                "error_rate": 0,
+                "latency_p50_ms": 0,
+                "latency_p95_ms": 0,
+                "latency_p99_ms": 0,
+            },
+            "endpoints": [],
+            "patterns": [],
+            "recommended_initial_vus": self.config.load.initial_vus,
+            "recommended_max_vus": self.config.load.max_vus,
+        }
+    
+    def _get_auth_headers(self) -> Dict[str, str]:
+        """Get authentication headers from config"""
+        auth = self.config.auth
+        headers = {}
+        
+        if auth.method == "bearer" and auth.token:
+            headers["Authorization"] = f"Bearer {auth.token}"
+        elif auth.method == "header" and auth.header_name and auth.header_value:
+            headers[auth.header_name] = auth.header_value
+        
+        return headers
+    
     def _node_load_execution(self, state: AgentState) -> AgentState:
-        """Execute load tests using k6"""
+        """
+        Execute load tests using k6.
+        
+        Currently mocked - will be implemented in next phase.
+        """
         state.phase = AgentPhase.LOAD_EXECUTION
         
         if self.verbose:
             print("[3/7] Executing load tests...")
+            print("  (Load execution is mocked - k6 integration pending)")
         
-        # TODO: Implement k6 execution
-        # For now, create placeholder results
+        # Create mocked results based on generated tests
         for test in state.generated_tests:
+            # Mock result that simulates data flow
             result = LoadTestResult(
                 test_type=test["type"],
                 vus=test["vus"],
                 duration=test["duration"],
+                # Mock metrics based on baseline if available
+                total_requests=test["vus"] * 100,  # Simulated
+                successful_requests=test["vus"] * 95,
+                failed_requests=test["vus"] * 5,
+                error_rate=0.05,
+                latency_p50_ms=self._baseline.global_latency_p50 if self._baseline else 50,
+                latency_p95_ms=self._baseline.global_latency_p95 if self._baseline else 200,
+                latency_p99_ms=self._baseline.global_latency_p99 if self._baseline else 500,
+                throughput_rps=test["vus"] * 10,  # Simulated
             )
             state.load_results.append(result)
+        
+        if self.verbose:
+            print(f"  Created {len(state.load_results)} mocked test results")
         
         return state
     
@@ -205,7 +474,8 @@ class SentinelPerfAgent:
         if self.verbose:
             print("[4/7] Collecting results...")
         
-        # TODO: Implement result aggregation
+        # Results are already collected in load_execution
+        # This phase would aggregate across multiple test runs
         
         return state
     
@@ -216,8 +486,8 @@ class SentinelPerfAgent:
         if self.verbose:
             print("[5/7] Detecting breaking point...")
         
-        # TODO: Implement breaking point detection
-        # For now, create placeholder
+        # Since load execution is mocked, create placeholder breaking point
+        # In real implementation, this would analyze actual test results
         state.breaking_point = BreakingPoint(
             vus_at_break=0,
             rps_at_break=0.0,
@@ -226,6 +496,7 @@ class SentinelPerfAgent:
             observed_value=0.0,
             threshold_value=0.0,
             confidence=0.0,
+            signals=["Load execution mocked - no real breaking point detected"],
         )
         
         return state
@@ -237,11 +508,28 @@ class SentinelPerfAgent:
         if self.verbose:
             print("[6/7] Analyzing root cause...")
         
-        # TODO: Implement LLM-based root cause analysis
-        # For now, create placeholder
+        # Since no real breaking point, provide baseline summary
         state.root_cause = RootCauseAnalysis(
-            primary_cause="Analysis pending",
+            primary_cause="No breaking point detected (load execution mocked)",
             confidence=0.0,
+            supporting_evidence=[
+                f"Baseline analyzed: {self._baseline.total_requests if self._baseline else 0} requests",
+                f"Top endpoints: {len(self._baseline.top_endpoints) if self._baseline else 0}",
+            ],
+            reasoning_steps=[
+                "Step 1: Telemetry data ingested and analyzed",
+                "Step 2: Baseline behavior inferred from historical data",
+                "Step 3: Load tests generated based on baseline",
+                "Step 4: Load execution pending - results mocked",
+            ],
+            recommendations=[
+                {
+                    "action": "Run with real k6 execution to detect actual breaking point",
+                    "confidence": 1.0,
+                    "priority": 1,
+                    "estimated_impact": "High - enables actual performance analysis",
+                }
+            ],
             llm_mode=self.llm_mode,
         )
         
@@ -254,8 +542,29 @@ class SentinelPerfAgent:
         if self.verbose:
             print("[7/7] Generating reports...")
         
-        # TODO: Implement report generation
-        # For now, mark complete
+        # Generate reports using report modules
+        from sentinelperf.reports.markdown import MarkdownReporter
+        from sentinelperf.reports.json_report import JSONReporter
+        
+        # Create intermediate result for report generation
+        intermediate_result = ExecutionResult(
+            success=True,
+            state=state,
+            summary="",
+        )
+        
+        # Generate markdown report
+        md_reporter = MarkdownReporter(self.output_dir)
+        md_path = md_reporter.generate(intermediate_result)
+        
+        # Generate JSON report
+        json_reporter = JSONReporter(self.output_dir)
+        json_path = json_reporter.generate(intermediate_result)
+        
+        if self.verbose:
+            print(f"  Markdown report: {md_path}")
+            print(f"  JSON report: {json_path}")
+        
         state.mark_complete()
         
         return state
@@ -263,7 +572,16 @@ class SentinelPerfAgent:
     def _generate_summary(self, state: AgentState) -> str:
         """Generate execution summary"""
         if state.phase == AgentPhase.COMPLETE:
-            return f"Analysis complete for {state.target_url}"
+            summary_parts = [f"Analysis complete for {state.target_url}"]
+            
+            if self._baseline:
+                summary_parts.append(
+                    f"Baseline: {self._baseline.global_avg_rps:.1f} RPS, "
+                    f"P95: {self._baseline.global_latency_p95:.0f}ms"
+                )
+            
+            return " | ".join(summary_parts)
+            
         elif state.phase == AgentPhase.ERROR:
             return f"Analysis failed: {', '.join(state.errors)}"
         else:

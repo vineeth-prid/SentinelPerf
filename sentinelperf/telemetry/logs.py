@@ -90,19 +90,17 @@ class AccessLogSource(TelemetrySource):
                 collection_end=end_time,
             )
         
-        # Aggregate metrics by endpoint
-        endpoint_data: Dict[str, Dict[str, Any]] = defaultdict(lambda: {
-            "count": 0,
-            "errors": 0,
-            "latencies": [],
-        })
-        
         # TODO: Implement actual log parsing
         # This will involve:
         # 1. Reading log file (with tail for large files)
         # 2. Parsing each line with regex
         # 3. Filtering by time range
         # 4. Aggregating by endpoint
+        _ = defaultdict(lambda: {
+            "count": 0,
+            "errors": 0,
+            "latencies": [],
+        })  # placeholder for future implementation
         
         return TelemetryData(
             source=self.source_name,

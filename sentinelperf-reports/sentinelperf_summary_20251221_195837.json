@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "generated_at": "2025-12-21T19:53:04.813567",
+  "generated_at": "2025-12-21T19:58:37.779183",
   "status": "success",
   "target": {
     "url": "http://localhost:8765",
     "environment": "test"
   },
   "execution": {
-    "started_at": "2025-12-21T19:49:33.634461",
+    "started_at": "2025-12-21T19:55:06.780811",
     "completed_at": null,
     "duration_seconds": null,
     "phase": "report_generation",
@@ -30,7 +30,7 @@
         "test_type": "baseline",
         "vus": 2,
         "metrics": {
-          "rps": 4.352210784816137
+          "rps": 4.512851570365374
         }
       },
       {
@@ -40,17 +40,17 @@
         "test_type": "stress",
         "vus": 30,
         "metrics": {
-          "rps": 35.15248496209891
+          "rps": 34.59958510715841
         }
       },
       {
         "timestamp": "t2",
         "event_type": "error_rate_breach",
-        "description": "Error rate crossed threshold (16.5% > 5.0%)",
+        "description": "Error rate crossed threshold (17.5% > 5.0%)",
         "test_type": "stress",
         "vus": 30,
         "metrics": {
-          "error_rate": 0.16491085899513777,
+          "error_rate": 0.1754277468563183,
           "threshold": 0.05
         }
       },
@@ -61,63 +61,63 @@
         "test_type": "stress",
         "vus": 30,
         "metrics": {
-          "latency_p95_slope": 18.909170862911182,
+          "latency_p95_slope": 18.930662066605667,
           "threshold": 1.5
         }
       },
       {
         "timestamp": "t4",
         "event_type": "latency_degradation",
-        "description": "Latency exceeded threshold (678ms > 200ms)",
+        "description": "Latency exceeded threshold (680ms > 200ms)",
         "test_type": "stress",
         "vus": 30,
         "metrics": {
-          "latency_p95_absolute": 677.9724867499999,
+          "latency_p95_absolute": 680.219601,
           "threshold": 200
         }
       },
       {
         "timestamp": "t5",
         "event_type": "error_rate_breach",
-        "description": "Error rate crossed threshold (38.8% > 5.0%)",
+        "description": "Error rate crossed threshold (56.2% > 5.0%)",
         "test_type": "spike",
         "vus": 30,
         "metrics": {
-          "error_rate": 0.38813559322033897,
+          "error_rate": 0.5619918699186992,
           "threshold": 0.05
         }
       },
       {
         "timestamp": "t6",
         "event_type": "latency_degradation",
-        "description": "Latency exceeded threshold (707ms > 200ms)",
+        "description": "Latency exceeded threshold (710ms > 200ms)",
         "test_type": "spike",
         "vus": 30,
         "metrics": {
-          "latency_p95_absolute": 707.3979514,
+          "latency_p95_absolute": 710.45727895,
           "threshold": 200
         }
       }
     ],
     "vus_at_break": 30,
-    "rps_at_break": 35.15248496209891,
+    "rps_at_break": 34.59958510715841,
     "failure_type": "error_rate_breach",
     "threshold_exceeded": "error_rate > 0.05",
-    "observed_value": 0.16491085899513777,
+    "observed_value": 0.1754277468563183,
     "threshold_value": 0.05,
     "confidence": 0.85,
     "signals": [
       "error_rate_breach at 30 VUs",
-      "Observed: 0.1649, Threshold: 0.0500",
-      "Severity: 3.30x threshold",
-      "Error rate: 16.49%",
-      "P95 latency: 678.0ms",
-      "Throughput: 35.2 RPS"
+      "Observed: 0.1754, Threshold: 0.0500",
+      "Severity: 3.51x threshold",
+      "Error rate: 17.54%",
+      "P95 latency: 680.2ms",
+      "Throughput: 34.6 RPS"
     ]
   },
   "root_cause": {
     "analyzed": true,
-    "root_cause_summary": "Error rate exceeded threshold causing cascading failures at 30 VUs (35.2 RPS)",
+    "root_cause_summary": "Error rate exceeded threshold causing cascading failures at 30 VUs (34.6 RPS)",
     "primary_cause": "Error propagation and cascade effect",
     "contributing_factors": [
       "Error rate exceeded threshold",
@@ -140,7 +140,7 @@
     "recommendations": [
       {
         "action": "Inspect error types and downstream dependencies",
-        "rationale": "Errors cascaded causing system collapse (detected at 30 VUs, 35.2 RPS via error_rate_breach)",
+        "rationale": "Errors cascaded causing system collapse (detected at 30 VUs, 34.6 RPS via error_rate_breach)",
         "expected_impact": "Identify root cause of error propagation",
         "risk": "LOW",
         "confidence": 0.85,
@@ -176,49 +176,49 @@
       "test_type": "baseline",
       "vus": 2,
       "duration": "26s",
-      "total_requests": 109,
-      "successful_requests": 109,
+      "total_requests": 113,
+      "successful_requests": 113,
       "failed_requests": 0,
       "error_rate": 0,
       "latency": {
-        "p50_ms": 31.996953,
-        "p95_ms": 35.8541626,
-        "p99_ms": 35.96818332
+        "p50_ms": 31.902125,
+        "p95_ms": 35.9321612,
+        "p99_ms": 36.06361356
       },
-      "throughput_rps": 4.352210784816137,
-      "timestamp": "2025-12-21T19:53:04.761479"
+      "throughput_rps": 4.512851570365374,
+      "timestamp": "2025-12-21T19:58:37.727821"
     },
     {
       "test_type": "stress",
       "vus": 30,
       "duration": "141s",
-      "total_requests": 4936,
-      "successful_requests": 4122,
-      "failed_requests": 814,
-      "error_rate": 0.16491085899513777,
+      "total_requests": 4851,
+      "successful_requests": 4000,
+      "failed_requests": 851,
+      "error_rate": 0.1754277468563183,
       "latency": {
-        "p50_ms": 32.804435999999995,
-        "p95_ms": 677.9724867499999,
-        "p99_ms": 715.86873985
+        "p50_ms": 32.826742,
+        "p95_ms": 680.219601,
+        "p99_ms": 716.6266304999999
       },
-      "throughput_rps": 35.15248496209891,
-      "timestamp": "2025-12-21T19:53:04.761484"
+      "throughput_rps": 34.59958510715841,
+      "timestamp": "2025-12-21T19:58:37.727826"
     },
     {
       "test_type": "spike",
       "vus": 30,
       "duration": "45s",
-      "total_requests": 1180,
-      "successful_requests": 722,
-      "failed_requests": 458,
-      "error_rate": 0.38813559322033897,
+      "total_requests": 984,
+      "successful_requests": 431,
+      "failed_requests": 553,
+      "error_rate": 0.5619918699186992,
       "latency": {
-        "p50_ms": 80.0957285,
-        "p95_ms": 707.3979514,
-        "p99_ms": 722.60703606
+        "p50_ms": 582.4576529999999,
+        "p95_ms": 710.45727895,
+        "p99_ms": 721.16777049
       },
-      "throughput_rps": 26.81722471326025,
-      "timestamp": "2025-12-21T19:53:04.761486"
+      "throughput_rps": 22.335173782136863,
+      "timestamp": "2025-12-21T19:58:37.727828"
     }
   ],
   "ci_cd": {

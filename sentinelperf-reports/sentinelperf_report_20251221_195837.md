@@ -2,14 +2,14 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-21 19:53:04 UTC  
+**Generated:** 2025-12-21 19:58:37 UTC  
 **Status:** ⚠️ report_generation
 
 ---
 
 ## Executive Summary
 
-The system reached its **breaking point at 30 virtual users** (35.2 requests/second), where error_rate_breach exceeded acceptable thresholds.
+The system reached its **breaking point at 30 virtual users** (34.6 requests/second), where error_rate_breach exceeded acceptable thresholds.
 
 **Primary Root Cause:** Error propagation and cascade effect (confidence: 85%)
 
@@ -20,21 +20,21 @@ The system reached its **breaking point at 30 virtual users** (35.2 requests/sec
 | Metric | Value |
 |--------|-------|
 | Virtual Users at Break | 30 |
-| Requests/Second at Break | 35.2 |
+| Requests/Second at Break | 34.6 |
 | Failure Type | error_rate_breach |
 | Threshold Exceeded | error_rate > 0.05 |
-| Observed Value | 0.1649 |
+| Observed Value | 0.1754 |
 | Threshold Value | 0.0500 |
 | Detection Confidence | 85% |
 
 ### Observed Signals
 
 - error_rate_breach at 30 VUs
-- Observed: 0.1649, Threshold: 0.0500
-- Severity: 3.30x threshold
-- Error rate: 16.49%
-- P95 latency: 678.0ms
-- Throughput: 35.2 RPS
+- Observed: 0.1754, Threshold: 0.0500
+- Severity: 3.51x threshold
+- Error rate: 17.54%
+- P95 latency: 680.2ms
+- Throughput: 34.6 RPS
 
 ### Failure Timeline
 
@@ -42,11 +42,11 @@ The system reached its **breaking point at 30 virtual users** (35.2 requests/sec
 |------|-------|-----------|-----|-------------|
 | t0 | 📈 load_change | baseline | 2 | Load increased to 2 VUs (baseline) |
 | t1 | 📈 load_change | stress | 30 | Load increased to 30 VUs (stress) |
-| t2 | 🔴 error_rate_breach | stress | 30 | Error rate crossed threshold (16.5% > 5.0%) |
+| t2 | 🔴 error_rate_breach | stress | 30 | Error rate crossed threshold (17.5% > 5.0%) |
 | t3 | 🟠 latency_degradation | stress | 30 | Latency slope changed (18.9x increase) |
-| t4 | 🟠 latency_degradation | stress | 30 | Latency exceeded threshold (678ms > 200ms) |
-| t5 | 🔴 error_rate_breach | spike | 30 | Error rate crossed threshold (38.8% > 5.0%) |
-| t6 | 🟠 latency_degradation | spike | 30 | Latency exceeded threshold (707ms > 200ms) |
+| t4 | 🟠 latency_degradation | stress | 30 | Latency exceeded threshold (680ms > 200ms) |
+| t5 | 🔴 error_rate_breach | spike | 30 | Error rate crossed threshold (56.2% > 5.0%) |
+| t6 | 🟠 latency_degradation | spike | 30 | Latency exceeded threshold (710ms > 200ms) |
 
 ## Root Cause Analysis
 
@@ -56,7 +56,7 @@ The system reached its **breaking point at 30 virtual users** (35.2 requests/sec
 
 ### Summary
 
-Error rate exceeded threshold causing cascading failures at 30 VUs (35.2 RPS)
+Error rate exceeded threshold causing cascading failures at 30 VUs (34.6 RPS)
 
 ### Primary Cause
 
@@ -85,7 +85,7 @@ Error propagation and cascade effect
 **Risk:** 🟢 LOW  
 **Confidence:** 85%
 
-**Rationale:** Errors cascaded causing system collapse (detected at 30 VUs, 35.2 RPS via error_rate_breach)
+**Rationale:** Errors cascaded causing system collapse (detected at 30 VUs, 34.6 RPS via error_rate_breach)
 
 **Expected Impact:** Identify root cause of error propagation
 
@@ -118,9 +118,9 @@ Error propagation and cascade effect
 
 | Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
 |-----------|-----|----------|----------|------------|-------------|------------|
-| baseline | 2 | 26s | 109 | 0.00% | 36ms | 4.4 RPS |
-| stress | 30 | 141s | 4936 | 16.49% | 678ms | 35.2 RPS |
-| spike | 30 | 45s | 1180 | 38.81% | 707ms | 26.8 RPS |
+| baseline | 2 | 26s | 113 | 0.00% | 36ms | 4.5 RPS |
+| stress | 30 | 141s | 4851 | 17.54% | 680ms | 34.6 RPS |
+| spike | 30 | 45s | 984 | 56.20% | 710ms | 22.3 RPS |
 
 ## Telemetry Analysis
 

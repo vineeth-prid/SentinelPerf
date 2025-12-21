@@ -37,8 +37,8 @@ state = LoadState()
 
 # Configuration for degradation simulation
 # SCENARIO: BURST INSTABILITY - Fails only on spike, OK on gradual load
-MAX_HEALTHY_CONCURRENT = 10  # Higher threshold for gradual load
-ERROR_THRESHOLD_CONCURRENT = 12  # Just above max_healthy - fails on burst
+MAX_HEALTHY_CONCURRENT = 6  # Threshold for gradual load
+ERROR_THRESHOLD_CONCURRENT = 8  # Just above - fails ONLY on burst
 BASE_LATENCY_MS = 25  # Low base latency
 
 

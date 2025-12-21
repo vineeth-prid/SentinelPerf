@@ -65,6 +65,7 @@ class JSONReporter:
             "telemetry": self._telemetry_summary(state),
             "breaking_point": self._breaking_point_summary(state),
             "root_cause": self._root_cause_summary(state),
+            "recommendations": state.recommendations or {"recommendations": [], "limitations": []},
             "load_tests": self._load_tests_summary(state),
             
             "ci_cd": self._cicd_output(state, result),

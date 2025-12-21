@@ -115,7 +115,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     config_path = Path(args.config)
     
     if not config_path.exists():
-        print(f"Error: Configuration file not found: {config_path}", file=sys.stderr)
+        print(f"\033[91mError:\033[0m Configuration file not found: {config_path}", file=sys.stderr)
         return 1
     
     try:
@@ -123,16 +123,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
         errors = validate_config_file(config_path)
         
         if errors:
-            print("Configuration validation failed:")
+            print(f"\033[91mConfiguration validation failed:\033[0m")
             for error in errors:
-                print(f"  - {error}")
+                print(f"  • {error}")
             return 1
         
-        print(f"Configuration valid: {config_path}")
+        print(f"\033[92m✓\033[0m Configuration valid: {config_path}")
         return 0
         
     except Exception as e:
-        print(f"Error validating configuration: {e}", file=sys.stderr)
+        print(f"\033[91mError:\033[0m Failed to validate configuration: {e}", file=sys.stderr)
         return 1
 
 

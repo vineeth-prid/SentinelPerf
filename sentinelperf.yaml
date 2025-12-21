@@ -23,13 +23,13 @@ environments:
         enabled: false
     
     load:
-      initial_vus: 5
-      max_vus: 50
+      initial_vus: 2
+      max_vus: 15  # Lower max to avoid overwhelming server
       ramp_duration: "10s"
       hold_duration: "10s"
-      error_rate_threshold: 0.05  # 5% error threshold - more strict
-      p95_latency_threshold_ms: 200  # 200ms P95 threshold
-      adaptive_step: 10
+      error_rate_threshold: 0.05
+      p95_latency_threshold_ms: 200
+      adaptive_step: 3
     
     llm:
       provider: "ollama"

@@ -1,11 +1,11 @@
-# SentinelPerf AI Configuration Example
-# Copy this file to sentinelperf.yaml and customize for your environment
+# SentinelPerf AI Test Configuration
+# Uses sample OTEL export file for testing
 
 version: "1.0"
 
 environments:
-  # Local development environment
-  local:
+  # Test environment with OTEL file
+  test:
     target:
       base_url: "http://localhost:8080"
       health_endpoint: "/health"
@@ -15,86 +15,30 @@ environments:
         - "/api/products"
     
     auth:
-      method: "bearer"  # Options: bearer, header, none
-      token: "${API_TOKEN}"  # Environment variable reference
+      method: "none"
     
     telemetry:
-      # Priority: otel > logs > prometheus (first enabled wins)
       otel:
         enabled: true
-        endpoint: "http://localhost:4318"  # OTLP HTTP endpoint
+        endpoint: "http://localhost:4318"
+        path: "/app/test_data/sample_otel_export.json"  # Use file for testing
       logs:
         enabled: false
-        path: "/var/log/app/access.log"
       prometheus:
         enabled: false
-        endpoint: "http://localhost:9090"
     
     load:
       initial_vus: 1
       max_vus: 50
       ramp_duration: "30s"
       hold_duration: "60s"
-      error_rate_threshold: 0.05  # 5% error rate
-      p95_latency_threshold_ms: 2000  # 2 seconds
+      error_rate_threshold: 0.05
+      p95_latency_threshold_ms: 2000
       adaptive_step: 10
     
     llm:
-      provider: "ollama"  # Options: ollama, rules, mock
+      provider: "mock"
       model: "qwen2.5:14b-instruct"
-      fallback_model: "qwen2.5:7b-instruct"
       base_url: "http://localhost:11434"
       timeout: 120
       temperature: 0.1
-
-  # Staging environment example
-  staging:
-    target:
-      base_url: "https://staging.example.com"
-      health_endpoint: "/health"
-    
-    auth:
-      method: "header"
-      header_name: "X-API-Key"
-      header_value: "${STAGING_API_KEY}"
-    
-    telemetry:
-      otel:
-        enabled: true
-        endpoint: "http://otel-collector.staging:4318"
-    
-    load:
-      initial_vus: 5
-      max_vus: 100
-      ramp_duration: "60s"
-      hold_duration: "120s"
-      error_rate_threshold: 0.03
-      p95_latency_threshold_ms: 1500
-
-  # Production environment example (read-only, low impact)
-  production:
-    target:
-      base_url: "https://api.example.com"
-      health_endpoint: "/health"
-      endpoints:
-        - "/api/health"  # Only test health endpoint in prod
-    
-    auth:
-      method: "bearer"
-      token: "${PROD_API_TOKEN}"
-    
-    telemetry:
-      prometheus:
-        enabled: true
-        endpoint: "http://prometheus.monitoring:9090"
-    
-    load:
-      initial_vus: 1
-      max_vus: 10  # Very conservative in production
-      ramp_duration: "60s"
-      hold_duration: "30s"
-      error_rate_threshold: 0.01  # 1% - stricter in prod
-      p95_latency_threshold_ms: 1000
-    
-    llm:
-      provider: "rules"  # Use rules-only in production for determinism

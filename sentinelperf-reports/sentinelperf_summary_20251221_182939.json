@@ -1,0 +1,212 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-12-21T18:29:39.739051",
+  "status": "success",
+  "target": {
+    "url": "http://localhost:8765",
+    "environment": "test"
+  },
+  "execution": {
+    "started_at": "2025-12-21T18:27:27.963573",
+    "completed_at": null,
+    "duration_seconds": null,
+    "phase": "report_generation",
+    "errors": []
+  },
+  "telemetry": {
+    "available": true,
+    "source": "otel",
+    "endpoints_analyzed": 7,
+    "collection_timestamp": "2025-12-21T18:27:27.965287"
+  },
+  "breaking_point": {
+    "detected": true,
+    "classification": "already_degraded_baseline",
+    "message": "Breaking point at 1 VUs (error_rate_breach)",
+    "timeline": [
+      {
+        "timestamp": "t0",
+        "event_type": "load_change",
+        "description": "Load increased to 1 VUs (baseline)",
+        "test_type": "baseline",
+        "vus": 1,
+        "metrics": {
+          "rps": 3.213502601427019
+        }
+      },
+      {
+        "timestamp": "t1",
+        "event_type": "error_rate_breach",
+        "description": "Error rate crossed threshold (28.4% > 5.0%)",
+        "test_type": "baseline",
+        "vus": 1,
+        "metrics": {
+          "error_rate": 0.2839506172839506,
+          "threshold": 0.05
+        }
+      },
+      {
+        "timestamp": "t2",
+        "event_type": "load_change",
+        "description": "Load increased to 15 VUs (stress)",
+        "test_type": "stress",
+        "vus": 15,
+        "metrics": {
+          "rps": 29.62835716275925
+        }
+      },
+      {
+        "timestamp": "t3",
+        "event_type": "error_rate_breach",
+        "description": "Error rate crossed threshold (33.2% > 5.0%)",
+        "test_type": "stress",
+        "vus": 15,
+        "metrics": {
+          "error_rate": 0.33221476510067116,
+          "threshold": 0.05
+        }
+      },
+      {
+        "timestamp": "t4",
+        "event_type": "error_rate_breach",
+        "description": "Error rate crossed threshold (34.7% > 5.0%)",
+        "test_type": "spike",
+        "vus": 15,
+        "metrics": {
+          "error_rate": 0.3466440101954121,
+          "threshold": 0.05
+        }
+      }
+    ],
+    "vus_at_break": 1,
+    "rps_at_break": 3.213502601427019,
+    "failure_type": "error_rate_breach",
+    "threshold_exceeded": "error_rate > 0.05",
+    "observed_value": 0.2839506172839506,
+    "threshold_value": 0.05,
+    "confidence": 0.65,
+    "signals": [
+      "error_rate_breach at 1 VUs",
+      "Observed: 0.2840, Threshold: 0.0500",
+      "Severity: 5.68x threshold",
+      "Error rate: 28.40%",
+      "P95 latency: 30.8ms",
+      "Throughput: 3.2 RPS"
+    ]
+  },
+  "root_cause": {
+    "analyzed": true,
+    "root_cause_summary": "System showed degradation even at baseline load levels at 1 VUs (3.2 RPS)",
+    "primary_cause": "Pre-existing system issues before load testing",
+    "contributing_factors": [
+      "Error rate exceeded threshold"
+    ],
+    "confidence": 0.85,
+    "assumptions": [
+      "Load tests accurately simulate production traffic patterns",
+      "Telemetry data reflects actual system behavior"
+    ],
+    "limitations": [
+      "Analysis based on rules-only (LLM unavailable)",
+      "Low baseline confidence - limited historical data"
+    ],
+    "llm_mode": "rules",
+    "llm_model": "",
+    "llm_latency_ms": 0.0
+  },
+  "recommendations": {
+    "recommendations": [
+      {
+        "action": "Fix baseline errors before load testing",
+        "rationale": "System already degraded at minimal load (detected at 1 VUs, 3.2 RPS via error_rate_breach)",
+        "expected_impact": "Establish healthy baseline for accurate testing",
+        "risk": "LOW",
+        "confidence": 0.885,
+        "priority": 1
+      },
+      {
+        "action": "Check service health and dependencies",
+        "rationale": "Baseline errors suggest infrastructure issues",
+        "expected_impact": "Identify and resolve pre-existing problems",
+        "risk": "LOW",
+        "confidence": 0.85,
+        "priority": 2
+      },
+      {
+        "action": "Review recent deployments or configuration changes",
+        "rationale": "Baseline degradation may be from recent changes",
+        "expected_impact": "Rollback if recent change caused degradation",
+        "risk": "LOW",
+        "confidence": 0.7449999999999999,
+        "priority": 3
+      }
+    ],
+    "limitations": [
+      "Recommendations are guidance, not prescriptions",
+      "Actual fixes require system-specific investigation",
+      "Baseline issues must be fixed before further analysis",
+      "Breaking point detection confidence is 65%"
+    ],
+    "polished_by_llm": false,
+    "llm_model": "",
+    "llm_latency_ms": 0.0
+  },
+  "load_tests": [
+    {
+      "test_type": "baseline",
+      "vus": 1,
+      "duration": "26s",
+      "total_requests": 81,
+      "successful_requests": 58,
+      "failed_requests": 23,
+      "error_rate": 0.2839506172839506,
+      "latency": {
+        "p50_ms": 22.859365,
+        "p95_ms": 30.822013,
+        "p99_ms": 30.905116
+      },
+      "throughput_rps": 3.213502601427019,
+      "timestamp": "2025-12-21T18:29:39.606929"
+    },
+    {
+      "test_type": "stress",
+      "vus": 15,
+      "duration": "61s",
+      "total_requests": 1788,
+      "successful_requests": 1194,
+      "failed_requests": 594,
+      "error_rate": 0.33221476510067116,
+      "latency": {
+        "p50_ms": 22.0392605,
+        "p95_ms": 30.290504749999997,
+        "p99_ms": 31.16325259
+      },
+      "throughput_rps": 29.62835716275925,
+      "timestamp": "2025-12-21T18:29:39.606933"
+    },
+    {
+      "test_type": "spike",
+      "vus": 15,
+      "duration": "45s",
+      "total_requests": 1177,
+      "successful_requests": 769,
+      "failed_requests": 408,
+      "error_rate": 0.3466440101954121,
+      "latency": {
+        "p50_ms": 21.967641,
+        "p95_ms": 30.133527400000002,
+        "p99_ms": 31.1890286
+      },
+      "throughput_rps": 26.548523013877222,
+      "timestamp": "2025-12-21T18:29:39.606936"
+    }
+  ],
+  "ci_cd": {
+    "exit_code": 0,
+    "thresholds_passed": false,
+    "summary": "FAIL: Breaking point at 1 VUs (error_rate_breach)",
+    "breaking_point_vus": 1,
+    "root_cause_confidence": 0.85,
+    "recommendation_count": 3
+  }
+}

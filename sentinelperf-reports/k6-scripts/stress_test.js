@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: stress_test
 // Type: stress
 // Target: http://localhost:8765
-// Generated: 2025-12-21T16:38:04.992726Z
+// Generated: 2025-12-21T16:43:48.544658Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -18,23 +18,23 @@ const latencyTrend = new Trend('sentinelperf_latency');
 // Test configuration
 export const options = {
   stages: [
-    { duration: '10s', target: 1 },
-    { duration: '30s', target: 2 },
-    { duration: '30s', target: 3 },
-    { duration: '30s', target: 4 },
-    { duration: '30s', target: 5 },
-    { duration: '30s', target: 6 },
-    { duration: '30s', target: 7 },
-    { duration: '30s', target: 8 },
-    { duration: '30s', target: 9 },
-    { duration: '30s', target: 10 },
-    { duration: '30s', target: 11 },
-    { duration: '30s', target: 12 },
-    { duration: '30s', target: 13 },
-    { duration: '30s', target: 14 },
-    { duration: '30s', target: 15 },
-    { duration: '30s', target: 15 },
-    { duration: '10s', target: 0 }
+    { duration: '5s', target: 1 },
+    { duration: '20s', target: 2 },
+    { duration: '20s', target: 3 },
+    { duration: '20s', target: 4 },
+    { duration: '20s', target: 5 },
+    { duration: '20s', target: 6 },
+    { duration: '20s', target: 7 },
+    { duration: '20s', target: 8 },
+    { duration: '20s', target: 9 },
+    { duration: '20s', target: 10 },
+    { duration: '20s', target: 11 },
+    { duration: '20s', target: 12 },
+    { duration: '20s', target: 13 },
+    { duration: '20s', target: 14 },
+    { duration: '20s', target: 15 },
+    { duration: '10s', target: 15 },
+    { duration: '5s', target: 0 }
   ],
   thresholds: {
     'http_req_failed': ['rate<0.5'],

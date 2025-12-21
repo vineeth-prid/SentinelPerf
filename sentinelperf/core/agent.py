@@ -224,7 +224,7 @@ class SentinelPerfAgent:
         state["phase"] = AgentPhase.TELEMETRY_ANALYSIS.value
         
         if self.verbose:
-            print("[1/7] Analyzing telemetry...")
+            print("[1/8] Analyzing telemetry...")
         
         # Determine active telemetry source
         telemetry_config = self.config.telemetry
@@ -359,7 +359,7 @@ class SentinelPerfAgent:
         state["phase"] = AgentPhase.TEST_GENERATION.value
         
         if self.verbose:
-            print("[2/7] Generating test configurations...")
+            print("[2/8] Generating test configurations...")
         
         # Get baseline data for load planning
         load_plan_input = self._get_load_plan_input()
@@ -514,7 +514,7 @@ class SentinelPerfAgent:
         state["phase"] = AgentPhase.LOAD_EXECUTION.value
         
         if self.verbose:
-            print("[3/7] Executing load tests...")
+            print("[3/8] Executing load tests...")
         
         # Check if k6 is available
         k6_available = self.k6_executor.check_available()
@@ -593,7 +593,7 @@ class SentinelPerfAgent:
         state["phase"] = AgentPhase.RESULTS_COLLECTION.value
         
         if self.verbose:
-            print("[4/7] Collecting results...")
+            print("[4/8] Collecting results...")
         
         # Results are already collected in load_execution
         # This phase would aggregate across multiple test runs
@@ -613,7 +613,7 @@ class SentinelPerfAgent:
         state["phase"] = AgentPhase.BREAKING_POINT_DETECTION.value
         
         if self.verbose:
-            print("[5/7] Detecting breaking point...")
+            print("[5/8] Detecting breaking point...")
         
         load_results = state.get("load_results", [])
         
@@ -675,7 +675,7 @@ class SentinelPerfAgent:
         state["phase"] = AgentPhase.ROOT_CAUSE_ANALYSIS.value
         
         if self.verbose:
-            print("[6/7] Analyzing root cause...")
+            print("[6/8] Analyzing root cause...")
         
         # Get deterministic analysis data
         breaking_point = state.get("breaking_point")

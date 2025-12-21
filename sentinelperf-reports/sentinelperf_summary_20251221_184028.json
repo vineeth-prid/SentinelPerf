@@ -1,0 +1,245 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-12-21T18:40:28.214526",
+  "status": "success",
+  "target": {
+    "url": "http://localhost:8765",
+    "environment": "test"
+  },
+  "execution": {
+    "started_at": "2025-12-21T18:36:17.292365",
+    "completed_at": null,
+    "duration_seconds": null,
+    "phase": "report_generation",
+    "errors": [
+      "No telemetry source configured or enabled"
+    ]
+  },
+  "telemetry": {
+    "available": false
+  },
+  "breaking_point": {
+    "detected": true,
+    "classification": "error_driven_collapse",
+    "message": "Breaking point at 50 VUs (latency_degradation)",
+    "timeline": [
+      {
+        "timestamp": "t0",
+        "event_type": "load_change",
+        "description": "Load increased to 5 VUs (baseline)",
+        "test_type": "baseline",
+        "vus": 5,
+        "metrics": {
+          "rps": 10.989930308649157
+        }
+      },
+      {
+        "timestamp": "t1",
+        "event_type": "load_change",
+        "description": "Load increased to 50 VUs (stress)",
+        "test_type": "stress",
+        "vus": 50,
+        "metrics": {
+          "rps": 10.406607048394303
+        }
+      },
+      {
+        "timestamp": "t2",
+        "event_type": "latency_degradation",
+        "description": "Latency slope changed (196.4x increase)",
+        "test_type": "stress",
+        "vus": 50,
+        "metrics": {
+          "latency_p95_slope": 196.43494001060603,
+          "threshold": 1.5
+        }
+      },
+      {
+        "timestamp": "t3",
+        "event_type": "latency_degradation",
+        "description": "Latency exceeded threshold (6075ms > 200ms)",
+        "test_type": "stress",
+        "vus": 50,
+        "metrics": {
+          "latency_p95_absolute": 6074.531102,
+          "threshold": 200
+        }
+      },
+      {
+        "timestamp": "t4",
+        "event_type": "throughput_plateau",
+        "description": "Throughput plateaued (expected 450.0%, got -5.3%)",
+        "test_type": "stress",
+        "vus": 50,
+        "metrics": {
+          "throughput_plateau": -0.053077976281230316,
+          "threshold": 4.5
+        }
+      },
+      {
+        "timestamp": "t5",
+        "event_type": "saturation",
+        "description": "Saturation detected (VUs increased but RPS stagnant)",
+        "test_type": "stress",
+        "vus": 50,
+        "metrics": {
+          "saturation": 0.9469220237187697,
+          "threshold": 5.0
+        }
+      },
+      {
+        "timestamp": "t6",
+        "event_type": "error_rate_breach",
+        "description": "Error rate crossed threshold (79.9% > 5.0%)",
+        "test_type": "spike",
+        "vus": 50,
+        "metrics": {
+          "error_rate": 0.7994579945799458,
+          "threshold": 0.05
+        }
+      },
+      {
+        "timestamp": "t7",
+        "event_type": "latency_degradation",
+        "description": "Latency exceeded threshold (713ms > 200ms)",
+        "test_type": "spike",
+        "vus": 50,
+        "metrics": {
+          "latency_p95_absolute": 712.72841995,
+          "threshold": 200
+        }
+      }
+    ],
+    "vus_at_break": 50,
+    "rps_at_break": 10.406607048394303,
+    "failure_type": "latency_degradation",
+    "threshold_exceeded": "latency_p95_slope > 1.5",
+    "observed_value": 196.43494001060603,
+    "threshold_value": 1.5,
+    "confidence": 0.85,
+    "signals": [
+      "latency_degradation at 50 VUs",
+      "Observed: 196.4349, Threshold: 1.5000",
+      "Severity: 130.96x threshold",
+      "Error rate: 4.93%",
+      "P95 latency: 6074.5ms",
+      "Throughput: 10.4 RPS"
+    ]
+  },
+  "root_cause": {
+    "analyzed": true,
+    "root_cause_summary": "Error rate exceeded threshold causing cascading failures at 50 VUs (10.4 RPS)",
+    "primary_cause": "Error propagation and cascade effect",
+    "contributing_factors": [
+      "Latency degradation detected",
+      "Resource saturation detected",
+      "Error rate exceeded threshold",
+      "Throughput stopped scaling with load"
+    ],
+    "confidence": 0.85,
+    "assumptions": [
+      "Load tests accurately simulate production traffic patterns",
+      "Telemetry data reflects actual system behavior"
+    ],
+    "limitations": [
+      "Analysis based on rules-only (LLM unavailable)",
+      "Low baseline confidence - limited historical data"
+    ],
+    "llm_mode": "rules",
+    "llm_model": "",
+    "llm_latency_ms": 0.0
+  },
+  "recommendations": {
+    "recommendations": [
+      {
+        "action": "Inspect error types and downstream dependencies",
+        "rationale": "Errors cascaded causing system collapse (detected at 50 VUs, 10.4 RPS via latency_degradation)",
+        "expected_impact": "Identify root cause of error propagation",
+        "risk": "LOW",
+        "confidence": 0.85,
+        "priority": 1
+      },
+      {
+        "action": "Implement circuit breaker pattern",
+        "rationale": "Prevent cascade failures from propagating",
+        "expected_impact": "Graceful degradation instead of collapse",
+        "risk": "MEDIUM",
+        "confidence": 0.815,
+        "priority": 2
+      },
+      {
+        "action": "Add rate limiting at entry points",
+        "rationale": "Protect system from overload-induced errors",
+        "expected_impact": "Controlled rejection instead of uncontrolled failure",
+        "risk": "MEDIUM",
+        "confidence": 0.7799999999999999,
+        "priority": 3
+      }
+    ],
+    "limitations": [
+      "Recommendations are guidance, not prescriptions",
+      "Actual fixes require system-specific investigation"
+    ],
+    "polished_by_llm": false,
+    "llm_model": "",
+    "llm_latency_ms": 0.0
+  },
+  "load_tests": [
+    {
+      "test_type": "baseline",
+      "vus": 5,
+      "duration": "26s",
+      "total_requests": 277,
+      "successful_requests": 277,
+      "failed_requests": 0,
+      "error_rate": 0,
+      "latency": {
+        "p50_ms": 26.920364,
+        "p95_ms": 30.923883,
+        "p99_ms": 31.48110668
+      },
+      "throughput_rps": 10.989930308649157,
+      "timestamp": "2025-12-21T18:40:28.162842"
+    },
+    {
+      "test_type": "stress",
+      "vus": 50,
+      "duration": "151s",
+      "total_requests": 1561,
+      "successful_requests": 1484,
+      "failed_requests": 77,
+      "error_rate": 0.04932735426008968,
+      "latency": {
+        "p50_ms": 26.745702,
+        "p95_ms": 6074.531102,
+        "p99_ms": 48090.2135832
+      },
+      "throughput_rps": 10.406607048394303,
+      "timestamp": "2025-12-21T18:40:28.162846"
+    },
+    {
+      "test_type": "spike",
+      "vus": 50,
+      "duration": "75s",
+      "total_requests": 738,
+      "successful_requests": 148,
+      "failed_requests": 590,
+      "error_rate": 0.7994579945799458,
+      "latency": {
+        "p50_ms": 624.549356,
+        "p95_ms": 712.72841995,
+        "p99_ms": 24987.852531269746
+      },
+      "throughput_rps": 9.972816626700897,
+      "timestamp": "2025-12-21T18:40:28.162848"
+    }
+  ],
+  "ci_cd": {
+    "exit_code": 0,
+    "thresholds_passed": false,
+    "summary": "FAIL: Breaking point at 50 VUs (latency_degradation)",
+    "breaking_point_vus": 50,
+    "root_cause_confidence": 0.85,
+    "recommendation_count": 3
+  }
+}

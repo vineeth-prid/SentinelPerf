@@ -90,21 +90,33 @@ class SentinelPerfAgent:
     def run(self) -> ExecutionResult:
         """Execute the full agent workflow"""
         
-        # Initialize state
-        initial_state = AgentState(
-            phase=AgentPhase.INIT,
-            environment=self.config._active_env or "unknown",
-            target_url=self.config.target.base_url,
-        )
+        # Initialize state as dict for LangGraph
+        initial_state = {
+            "phase": AgentPhase.INIT.value,
+            "environment": self.config._active_env or "unknown",
+            "target_url": self.config.target.base_url,
+            "telemetry_source": None,
+            "telemetry_insights": None,
+            "generated_tests": [],
+            "load_results": [],
+            "breaking_point": None,
+            "root_cause": None,
+            "errors": [],
+            "started_at": datetime.utcnow().isoformat(),
+            "completed_at": None,
+        }
         
         if self.verbose:
             print("Starting SentinelPerf analysis...")
-            print(f"Target: {initial_state.target_url}")
+            print(f"Target: {initial_state['target_url']}")
             print(f"LLM Mode: {self.llm_mode}")
         
         try:
             # Run the graph
-            final_state = self.graph.invoke(initial_state)
+            final_state_dict = self.graph.invoke(initial_state)
+            
+            # Convert dict back to AgentState
+            final_state = self._dict_to_agent_state(final_state_dict)
             
             # Build result
             return ExecutionResult(
@@ -117,14 +129,47 @@ class SentinelPerfAgent:
             
         except Exception as e:
             # Handle execution errors
-            error_state = initial_state
-            error_state.add_error(str(e))
+            error_state = AgentState(
+                phase=AgentPhase.ERROR,
+                environment=self.config._active_env or "unknown",
+                target_url=self.config.target.base_url,
+            )
+            error_state.errors.append(str(e))
             
             return ExecutionResult(
                 success=False,
                 state=error_state,
                 summary=f"Execution failed: {e}",
             )
+    
+    def _dict_to_agent_state(self, d: Dict[str, Any]) -> AgentState:
+        """Convert LangGraph dict output to AgentState"""
+        state = AgentState(
+            phase=AgentPhase(d.get("phase", "error")),
+            environment=d.get("environment", "unknown"),
+            target_url=d.get("target_url", ""),
+            telemetry_source=d.get("telemetry_source"),
+            telemetry_insights=d.get("telemetry_insights"),
+            generated_tests=d.get("generated_tests", []),
+            load_results=d.get("load_results", []),
+            breaking_point=d.get("breaking_point"),
+            root_cause=d.get("root_cause"),
+            errors=d.get("errors", []),
+        )
+        
+        if d.get("started_at"):
+            if isinstance(d["started_at"], str):
+                state.started_at = datetime.fromisoformat(d["started_at"])
+            else:
+                state.started_at = d["started_at"]
+        
+        if d.get("completed_at"):
+            if isinstance(d["completed_at"], str):
+                state.completed_at = datetime.fromisoformat(d["completed_at"])
+            else:
+                state.completed_at = d["completed_at"]
+        
+        return state
     
     # ===========================================
     # Node Implementations

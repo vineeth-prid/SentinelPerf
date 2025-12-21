@@ -140,14 +140,19 @@ class OpenTelemetrySource(TelemetrySource):
         # Load spans from source
         if self.file_path:
             self._spans = await self._load_from_file(self.file_path)
+            # For file-based sources, use the span timestamps to determine the actual time range
+            if self._spans:
+                actual_start = min(s.start_time for s in self._spans)
+                actual_end = max(s.start_time for s in self._spans)
+                start_time = actual_start
+                end_time = actual_end + timedelta(seconds=1)
         else:
             self._spans = await self._fetch_from_endpoint(start_time, end_time)
-        
-        # Filter by time range
-        self._spans = [
-            s for s in self._spans
-            if start_time <= s.start_time <= end_time
-        ]
+            # Filter by time range (only for endpoint sources)
+            self._spans = [
+                s for s in self._spans
+                if start_time <= s.start_time <= end_time
+            ]
         
         # Filter by endpoints if specified
         if endpoints:

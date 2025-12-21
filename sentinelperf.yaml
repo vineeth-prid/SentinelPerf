@@ -35,3 +35,7 @@ environments:
       provider: "ollama"
       model: "qwen2.5:14b"
       timeout: 60
+    
+    recommendations:
+      enabled: true
+      polish_with_llm: false  # Token-safe: LLM polishing OFF by default

@@ -36,9 +36,9 @@ class LoadState:
 state = LoadState()
 
 # Configuration for degradation simulation
-MAX_HEALTHY_CONCURRENT = 3  # Start degrading after 3 concurrent
-ERROR_THRESHOLD_CONCURRENT = 6  # Start erroring after 6 concurrent
-BASE_LATENCY_MS = 20  # Base latency in ms
+MAX_HEALTHY_CONCURRENT = 8  # Start degrading after 8 concurrent
+ERROR_THRESHOLD_CONCURRENT = 15  # Start erroring after 15 concurrent
+BASE_LATENCY_MS = 15  # Base latency in ms
 
 
 @app.get("/")

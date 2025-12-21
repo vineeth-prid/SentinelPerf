@@ -165,28 +165,47 @@ Root cause analysis was not performed."""
         
         rc = state.root_cause
         
-        reasoning = "\n".join([f"{i+1}. {step}" for i, step in enumerate(rc.reasoning_steps)]) \
-            if rc.reasoning_steps else "No reasoning steps recorded"
+        # Contributing factors
+        factors = "\n".join([f"- {f}" for f in rc.contributing_factors]) \
+            if rc.contributing_factors else "- None identified"
         
-        evidence = "\n".join([f"- {e}" for e in rc.supporting_evidence]) \
-            if rc.supporting_evidence else "- No evidence recorded"
+        # Assumptions
+        assumptions = "\n".join([f"- {a}" for a in rc.assumptions]) \
+            if rc.assumptions else "- None"
+        
+        # Limitations
+        limitations = "\n".join([f"- {l}" for l in rc.limitations]) \
+            if rc.limitations else "- None"
+        
+        # Model info
+        model_info = f"**Model:** {rc.llm_model}" if rc.llm_model else ""
+        latency_info = f" ({rc.llm_latency_ms:.0f}ms)" if rc.llm_latency_ms > 0 else ""
         
         return f"""## Root Cause Analysis
 
-**Analysis Mode:** {rc.llm_mode}  
+**Analysis Mode:** {rc.llm_mode}{latency_info}  
+{model_info}
 **Confidence:** {rc.confidence:.0%}
+
+### Summary
+
+{rc.root_cause_summary}
 
 ### Primary Cause
 
 {rc.primary_cause}
 
-### Reasoning
+### Contributing Factors
 
-{reasoning}
+{factors}
 
-### Supporting Evidence
+### Assumptions
 
-{evidence}"""
+{assumptions}
+
+### Limitations
+
+{limitations}"""
 
     def _recommendations_section(self, state: AgentState) -> str:
         """Recommendations section"""

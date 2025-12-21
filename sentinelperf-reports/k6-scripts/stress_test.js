@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: stress_test
 // Type: stress
 // Target: http://localhost:8765
-// Generated: 2025-12-21T16:47:10.261082Z
+// Generated: 2025-12-21T16:49:54.667071Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -19,14 +19,9 @@ const latencyTrend = new Trend('sentinelperf_latency');
 export const options = {
   stages: [
     { duration: '5s', target: 1 },
-    { duration: '20s', target: 3 },
-    { duration: '20s', target: 5 },
-    { duration: '20s', target: 7 },
-    { duration: '20s', target: 9 },
-    { duration: '20s', target: 11 },
-    { duration: '20s', target: 13 },
-    { duration: '20s', target: 15 },
-    { duration: '10s', target: 15 },
+    { duration: '10s', target: 3 },
+    { duration: '10s', target: 5 },
+    { duration: '10s', target: 5 },
     { duration: '5s', target: 0 }
   ],
   thresholds: {

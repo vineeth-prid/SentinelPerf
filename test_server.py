@@ -36,10 +36,10 @@ class LoadState:
 state = LoadState()
 
 # Configuration for degradation simulation
-# SCENARIO: CAPACITY EXHAUSTION - Throughput plateau, latency up, NO errors
-MAX_HEALTHY_CONCURRENT = 3  # Low threshold for latency
-ERROR_THRESHOLD_CONCURRENT = 1000  # Effectively no errors
-BASE_LATENCY_MS = 30  # Base latency
+# SCENARIO: BURST INSTABILITY - Fails only on spike, OK on gradual load
+MAX_HEALTHY_CONCURRENT = 10  # Higher threshold for gradual load
+ERROR_THRESHOLD_CONCURRENT = 12  # Just above max_healthy - fails on burst
+BASE_LATENCY_MS = 25  # Low base latency
 
 
 @app.get("/")

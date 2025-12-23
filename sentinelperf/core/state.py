@@ -102,6 +102,8 @@ class RootCauseAnalysis:
     confidence: float = 0.0  # 0.0 to 1.0
     assumptions: List[str] = field(default_factory=list)
     limitations: List[str] = field(default_factory=list)
+    failure_pattern: str = ""  # Detected failure pattern
+    pattern_explanation: str = ""  # Explanation for the pattern
     llm_mode: str = "rules"  # ollama, rules, mock
     llm_model: str = ""
     llm_latency_ms: float = 0.0

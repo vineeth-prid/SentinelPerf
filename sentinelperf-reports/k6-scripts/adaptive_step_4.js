@@ -1,7 +1,7 @@
 // SentinelPerf Generated Test: adaptive_step_4
 // Type: stress
 // Target: http://localhost:8765
-// Generated: 2025-12-23T07:17:23.497038Z
+// Generated: 2025-12-23T07:24:09.229713Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';

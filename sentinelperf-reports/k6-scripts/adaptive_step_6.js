@@ -1,7 +1,7 @@
-// SentinelPerf Generated Test: adaptive_step_1
+// SentinelPerf Generated Test: adaptive_step_6
 // Type: stress
 // Target: http://localhost:8765
-// Generated: 2025-12-23T10:10:40.219198Z
+// Generated: 2025-12-23T10:11:34.766136Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -18,7 +18,7 @@ const latencyTrend = new Trend('sentinelperf_latency');
 // Test configuration
 export const options = {
   stages: [
-    { duration: '10s', target: 2 }
+    { duration: '10s', target: 27 }
   ],
   thresholds: {
     'http_req_failed': ['rate<0.05'],
@@ -72,7 +72,7 @@ export function handleSummary(data) {
     'stdout': JSON.stringify({
       sentinelperf_version: '1.0',
       test_type: 'stress',
-      test_name: 'adaptive_step_1',
+      test_name: 'adaptive_step_6',
       timestamp: new Date().toISOString(),
       metrics: {
         http_reqs: data.metrics.http_reqs,

@@ -372,6 +372,7 @@ class SentinelPerfAgent:
             base_url=self.config.target.base_url,
             auth_headers=auth_headers,
         )
+        self._test_generator = generator  # Store for later use
         
         # Get endpoints for testing
         endpoints = load_plan_input.get("endpoints", [])

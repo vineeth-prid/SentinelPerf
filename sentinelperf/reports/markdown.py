@@ -332,6 +332,250 @@ No load test results available."""
         
         return header + "\n" + "\n".join(rows)
     
+    def _test_case_summary_section(self, state: AgentState) -> str:
+        """Test Case Summary section"""
+        if not state.load_results:
+            return """## Test Case Summary
+
+No test cases were executed."""
+        
+        # Define test type semantics
+        test_semantics = {
+            "baseline": ("Steady validation", "Constant load"),
+            "stress": ("Incremental capacity test", "Ramping load"),
+            "spike": ("Burst resilience test", "Sudden spike"),
+            "adaptive": ("Adaptive capacity search", "Stepwise escalation"),
+            "sustained": ("Long duration stability", "Sustained load"),
+            "recovery": ("Recovery behavior test", "Overload then drop"),
+        }
+        
+        lines = [
+            "## Test Case Summary",
+            "",
+            "| Test Case | Purpose | Load Pattern | Max VUs | Duration |",
+            "|-----------|---------|--------------|---------|----------|",
+        ]
+        
+        # Group results by test type base name
+        seen_types = set()
+        for r in state.load_results:
+            # Extract base test type (e.g., "adaptive_10vus" -> "adaptive")
+            test_type_base = r.test_type.split("_")[0].lower()
+            
+            # Skip if we've already added this type
+            if test_type_base in seen_types:
+                # Update max VUs for this type
+                continue
+            
+            # Find max VUs and duration for this test type
+            type_results = [
+                res for res in state.load_results 
+                if res.test_type.split("_")[0].lower() == test_type_base
+            ]
+            max_vus = max(res.vus for res in type_results)
+            
+            # Get duration from first result of this type
+            duration = type_results[0].duration if type_results else "N/A"
+            
+            # Get semantics
+            purpose, pattern = test_semantics.get(test_type_base, ("Performance test", "Variable"))
+            
+            lines.append(f"| {test_type_base.capitalize()} | {purpose} | {pattern} | {max_vus} | {duration} |")
+            seen_types.add(test_type_base)
+        
+        return "\n".join(lines)
+    
+    def _test_case_coverage_summary_section(self, state: AgentState) -> str:
+        """Test Case Coverage Summary section"""
+        lines = [
+            "## Test Case Coverage Summary",
+            "",
+        ]
+        
+        # Determine which test types ran
+        test_types_run = set()
+        if state.load_results:
+            for r in state.load_results:
+                test_type_base = r.test_type.split("_")[0].lower()
+                test_types_run.add(test_type_base)
+        
+        # A) Load Pattern Coverage
+        lines.extend([
+            "### A) Load Pattern Coverage",
+            "",
+            "| Pattern | Covered | Notes |",
+            "|---------|---------|-------|",
+        ])
+        
+        patterns = [
+            ("Baseline (steady)", "baseline", "Validates normal operation"),
+            ("Stress (incremental ramp)", "stress", "Tests gradual load increase"),
+            ("Spike (sudden burst)", "spike", "Tests burst handling"),
+            ("Soak (long duration)", "sustained", "Tests prolonged load stability"),
+            ("Recovery after overload", "recovery", "Tests system resilience"),
+        ]
+        
+        for pattern_name, test_key, note in patterns:
+            covered = "Yes" if test_key in test_types_run else "No"
+            notes = note if covered == "Yes" else "Not executed in this run"
+            lines.append(f"| {pattern_name} | {covered} | {notes} |")
+        
+        # B) Failure Mode Coverage
+        lines.extend([
+            "",
+            "### B) Failure Mode Coverage",
+            "",
+            "| Failure Mode | Observed | Notes |",
+            "|--------------|----------|-------|",
+        ])
+        
+        # Determine observed failures from timeline and breaking point
+        observed_failures = set()
+        if state.failure_timeline:
+            for event in state.failure_timeline:
+                event_type = event.get("event_type", "")
+                if event_type == "error_rate_breach":
+                    observed_failures.add("error_rate")
+                elif event_type == "latency_degradation":
+                    observed_failures.add("latency")
+                elif event_type == "throughput_plateau":
+                    observed_failures.add("throughput")
+                elif event_type == "saturation":
+                    observed_failures.add("saturation")
+        
+        # Check for burst instability
+        if state.failure_category == "instability_under_burst":
+            observed_failures.add("burst")
+        
+        failure_modes = [
+            ("Error rate breach", "error_rate", "Error threshold exceeded"),
+            ("Latency degradation", "latency", "P95 latency increased significantly"),
+            ("Throughput plateau", "throughput", "RPS stopped scaling with VUs"),
+            ("Infrastructure saturation", "saturation", "Resource limits detected"),
+            ("Burst instability", "burst", "Spike test caused failures"),
+        ]
+        
+        for mode_name, mode_key, note in failure_modes:
+            observed = "Yes" if mode_key in observed_failures else "No"
+            notes = note if observed == "Yes" else "Not observed"
+            lines.append(f"| {mode_name} | {observed} | {notes} |")
+        
+        # C) Observability Coverage
+        lines.extend([
+            "",
+            "### C) Observability Coverage",
+            "",
+            "| Signal Type | Available |",
+            "|-------------|-----------|",
+        ])
+        
+        app_telemetry = "Yes" if state.telemetry_insights else "No"
+        infra_metrics = "Yes" if state.infra_saturation else "No"
+        load_metrics = "Yes" if state.load_results else "No"
+        
+        lines.append(f"| Application telemetry | {app_telemetry} |")
+        lines.append(f"| Infrastructure metrics | {infra_metrics} |")
+        lines.append(f"| Load generator metrics | {load_metrics} |")
+        
+        return "\n".join(lines)
+    
+    def _api_trigger_summary_section(self, state: AgentState) -> str:
+        """API & Backend Trigger Summary section"""
+        lines = [
+            "## API & Backend Trigger Summary",
+            "",
+        ]
+        
+        # Get endpoints from telemetry or generated tests
+        endpoints = []
+        if state.telemetry_insights and state.telemetry_insights.endpoints:
+            endpoints = [ep.path for ep in state.telemetry_insights.endpoints[:10]]
+        elif state.generated_tests:
+            for test in state.generated_tests:
+                if "endpoints" in test:
+                    for ep in test["endpoints"]:
+                        path = ep.get("path", ep) if isinstance(ep, dict) else str(ep)
+                        if path not in endpoints:
+                            endpoints.append(path)
+        
+        if not endpoints:
+            endpoints = ["/ (default)"]
+        
+        # A) APIs Exercised
+        lines.extend([
+            "### A) APIs Exercised",
+            "",
+            "| API Endpoint | Test Phase | Load Applied | Observed Effect |",
+            "|--------------|------------|--------------|-----------------|",
+        ])
+        
+        # Determine test phases that ran
+        test_phases = set()
+        if state.load_results:
+            for r in state.load_results:
+                phase = r.test_type.split("_")[0].lower()
+                test_phases.add(phase)
+        
+        # Determine overall observed effect
+        overall_effect = "Stable"
+        if state.breaking_point and state.breaking_point.vus_at_break > 0:
+            if state.breaking_point.failure_type == "error_rate_breach":
+                overall_effect = "Errors increased"
+            elif state.breaking_point.failure_type == "latency_degradation":
+                overall_effect = "Latency increased"
+            else:
+                overall_effect = "Degradation observed"
+        elif state.failure_category == "no_failure":
+            overall_effect = "No degradation observed"
+        
+        # Generate load applied descriptions
+        for endpoint in endpoints[:5]:  # Limit to 5 endpoints
+            phases_str = ", ".join(sorted(test_phases)) if test_phases else "N/A"
+            
+            # Describe load applied
+            max_vus = max((r.vus for r in state.load_results), default=0) if state.load_results else 0
+            if "spike" in test_phases:
+                load_desc = f"Spike to {max_vus} VUs"
+            elif "stress" in test_phases or "adaptive" in test_phases:
+                load_desc = f"Gradual ramp to {max_vus} VUs"
+            elif "baseline" in test_phases:
+                load_desc = f"Steady {max_vus} VUs"
+            else:
+                load_desc = f"Up to {max_vus} VUs"
+            
+            lines.append(f"| {endpoint} | {phases_str} | {load_desc} | {overall_effect} |")
+        
+        if len(endpoints) > 5:
+            lines.append(f"| ... and {len(endpoints) - 5} more | - | - | - |")
+        
+        # B) APIs Contributing to Instability
+        lines.extend([
+            "",
+            "### B) APIs Contributing to Instability",
+            "",
+        ])
+        
+        # Check if we have signals associated with specific endpoints
+        instability_apis = []
+        if state.breaking_point and state.breaking_point.signals:
+            # Extract any endpoint-specific signals
+            for signal in state.breaking_point.signals:
+                if "/" in signal:  # Simple heuristic for endpoint reference
+                    instability_apis.append(signal)
+        
+        if instability_apis:
+            lines.extend([
+                "| API Endpoint | Failure Signal | Phase |",
+                "|--------------|----------------|-------|",
+            ])
+            for api_signal in instability_apis[:5]:
+                phase = state.breaking_point.failure_type if state.breaking_point else "N/A"
+                lines.append(f"| {api_signal} | {phase} | stress |")
+        else:
+            lines.append("No single API endpoint dominated failure behavior.")
+        
+        return "\n".join(lines)
+
     def _test_coverage_summary_section(self, state: AgentState) -> str:
         """Test coverage summary section"""
         if not state.load_results:

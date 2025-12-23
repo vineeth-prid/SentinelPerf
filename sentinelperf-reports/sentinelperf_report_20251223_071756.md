@@ -2,7 +2,7 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-23 07:11:20 UTC  
+**Generated:** 2025-12-23 07:17:56 UTC  
 **Status:** ⚠️ report_generation
 
 ---
@@ -11,7 +11,7 @@
 
 No breaking point was detected within the tested load range. The system handled all test scenarios within acceptable thresholds.
 
-**Primary Root Cause:** System capacity exceeds tested load levels (confidence: 70%)
+**Primary Root Cause:** System capacity exceeds tested load levels (confidence: 80%)
 
 ## Breaking Point Analysis
 
@@ -23,7 +23,7 @@ No breaking point detected within tested parameters.
 
 **Analysis Mode:** rules  
 
-**Confidence:** 70%
+**Confidence:** 80%
 
 ### Summary
 
@@ -46,7 +46,6 @@ System capacity exceeds tested load levels
 
 - Analysis based on rules-only (LLM unavailable)
 - Low baseline confidence - limited historical data
-- Limited timeline events for detailed analysis
 
 ## Recommendations
 
@@ -54,7 +53,7 @@ System capacity exceeds tested load levels
 
 **Priority:** 🔴 P1  
 **Risk:** 🟢 LOW  
-**Confidence:** 77%
+**Confidence:** 80%
 
 **Rationale:** No breaking point found within test parameters
 
@@ -64,7 +63,7 @@ System capacity exceeds tested load levels
 
 **Priority:** 🟡 P2  
 **Risk:** 🟢 LOW  
-**Confidence:** 84%
+**Confidence:** 87%
 
 **Rationale:** System handled all test scenarios successfully
 
@@ -80,9 +79,12 @@ System capacity exceeds tested load levels
 
 | Test Type | VUs | Duration | Requests | Error Rate | P95 Latency | Throughput |
 |-----------|-----|----------|----------|------------|-------------|------------|
-| baseline | 2 | 30s | 200 | 5.00% | 200ms | 20.0 RPS |
-| stress | 30 | 30s | 3000 | 5.00% | 200ms | 300.0 RPS |
-| spike | 30 | 30s | 3000 | 5.00% | 200ms | 300.0 RPS |
+| adaptive_2vus | 2 | 11s | 32 | 0.00% | 36ms | 3.2 RPS |
+| adaptive_7vus | 7 | 11s | 110 | 0.00% | 36ms | 10.5 RPS |
+| adaptive_12vus | 12 | 11s | 189 | 0.00% | 36ms | 18.2 RPS |
+| adaptive_17vus | 17 | 11s | 261 | 0.00% | 36ms | 25.0 RPS |
+| adaptive_22vus | 22 | 11s | 343 | 0.00% | 36ms | 32.8 RPS |
+| adaptive_27vus | 27 | 11s | 419 | 0.24% | 36ms | 40.0 RPS |
 
 ## Telemetry Analysis
 

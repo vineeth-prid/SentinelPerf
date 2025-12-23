@@ -43,6 +43,7 @@ class MarkdownReporter:
             self._root_cause_section(state),
             self._recommendations_section(state),
             self._load_test_results_section(state),
+            self._test_coverage_summary_section(state),
             self._telemetry_section(state),
             self._methodology_section(),
             self._footer(state),

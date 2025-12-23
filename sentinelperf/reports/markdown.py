@@ -36,18 +36,31 @@ class MarkdownReporter:
     def _build_report(self, state: AgentState, result: ExecutionResult) -> str:
         """Build complete Markdown report"""
         
+        # Report order per spec:
+        # 1. Executive Summary
+        # 2. Test Case Summary ← new
+        # 3. Test Case Coverage Summary ← fixed
+        # 4. API & Backend Trigger Summary ← new
+        # 5. Breaking Point Analysis
+        # 6. Failure Timeline (included in breaking_point_section)
+        # 7. Root Cause Analysis
+        # 8. Recommendations
+        # 9. Load Test Results
+        # 10. Infrastructure Saturation (if exists)
+        # 11. Telemetry Analysis
+        # 12. Methodology
+        # 13. Appendix
         sections = [
             self._header(state),
             self._executive_summary(state, result),
-            self._infra_warnings_section(state),
+            self._test_case_summary_section(state),
+            self._test_case_coverage_summary_section(state),
+            self._api_trigger_summary_section(state),
             self._breaking_point_section(state),
             self._root_cause_section(state),
             self._recommendations_section(state),
             self._load_test_results_section(state),
-            self._test_case_summary_section(state),
-            self._test_case_coverage_summary_section(state),
-            self._api_trigger_summary_section(state),
-            self._test_coverage_summary_section(state),
+            self._infra_saturation_section(state),
             self._telemetry_section(state),
             self._methodology_section(),
             self._footer(state),

@@ -59,6 +59,8 @@ class LLMOutputContract:
     confidence: float
     assumptions: List[str]
     limitations: List[str]
+    failure_pattern: str = ""  # Detected failure pattern
+    pattern_explanation: str = ""  # Explanation for the pattern
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "LLMOutputContract":
@@ -69,6 +71,8 @@ class LLMOutputContract:
             confidence=data.get("confidence", 0.0),
             assumptions=data.get("assumptions", []),
             limitations=data.get("limitations", []),
+            failure_pattern=data.get("failure_pattern", ""),
+            pattern_explanation=data.get("pattern_explanation", ""),
         )
     
     @classmethod

@@ -11,6 +11,7 @@ class TestType(str, Enum):
     BASELINE = "baseline"  # Validate baseline behavior
     STRESS = "stress"      # Incremental load to find limits
     SPIKE = "spike"        # Sudden traffic burst
+    ADAPTIVE = "adaptive"  # Adaptive VU escalation
 
 
 @dataclass

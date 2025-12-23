@@ -523,33 +523,75 @@ class SentinelPerfAgent:
             if self.verbose:
                 k6_version = self.k6_executor.get_version()
                 print(f"  k6 available: {k6_version}")
-                print(f"  Running {len(self._generated_scripts)} tests...")
             
-            # Execute tests with k6
-            k6_results = self.k6_executor.execute_all(
-                self._generated_scripts,
-                timeout_per_test=300,
-                verbose=self.verbose,
-            )
-            
-            # Convert K6Result to LoadTestResult
             load_results = []
-            for k6_result in k6_results:
-                load_result = LoadTestResult(
-                    test_type=k6_result.test_type,
-                    vus=k6_result.metrics.vus_max,
-                    duration=f"{k6_result.duration_seconds:.0f}s",
-                    total_requests=k6_result.metrics.total_requests,
-                    successful_requests=k6_result.metrics.total_requests - k6_result.metrics.failed_requests,
-                    failed_requests=k6_result.metrics.failed_requests,
-                    error_rate=k6_result.metrics.error_rate,
-                    latency_p50_ms=k6_result.metrics.latency_p50,
-                    latency_p95_ms=k6_result.metrics.latency_p95,
-                    latency_p99_ms=k6_result.metrics.latency_p99,
-                    throughput_rps=k6_result.metrics.requests_per_second,
-                    raw_output=k6_result.raw_stdout[:1000] if k6_result.raw_stdout else "",
+            
+            # Check if adaptive mode is enabled
+            if self.config.load.adaptive_enabled:
+                if self.verbose:
+                    print(f"  Adaptive mode enabled")
+                
+                # Use first script as template for adaptive execution
+                template_script = self._generated_scripts[0]
+                
+                k6_results = self.k6_executor.execute_adaptive(
+                    script=template_script,
+                    initial_vus=self.config.load.initial_vus,
+                    max_vus=min(self.config.load.max_vus, 1000),  # Hard cap
+                    step=self.config.load.adaptive_step,
+                    hold_seconds=self.config.load.adaptive_hold_seconds,
+                    error_threshold=self.config.load.error_rate_threshold,
+                    latency_slope_threshold=self.config.load.adaptive_latency_slope_threshold,
+                    fine_step_divisor=self.config.load.adaptive_fine_step_divisor,
+                    timeout_per_step=120,
+                    verbose=self.verbose,
                 )
-                load_results.append(load_result)
+                
+                # Convert K6Result to LoadTestResult
+                for k6_result in k6_results:
+                    load_result = LoadTestResult(
+                        test_type=k6_result.test_type,
+                        vus=k6_result.metrics.vus_max,
+                        duration=f"{k6_result.duration_seconds:.0f}s",
+                        total_requests=k6_result.metrics.total_requests,
+                        successful_requests=k6_result.metrics.total_requests - k6_result.metrics.failed_requests,
+                        failed_requests=k6_result.metrics.failed_requests,
+                        error_rate=k6_result.metrics.error_rate,
+                        latency_p50_ms=k6_result.metrics.latency_p50,
+                        latency_p95_ms=k6_result.metrics.latency_p95,
+                        latency_p99_ms=k6_result.metrics.latency_p99,
+                        throughput_rps=k6_result.metrics.requests_per_second,
+                        raw_output=k6_result.raw_stdout[:1000] if k6_result.raw_stdout else "",
+                    )
+                    load_results.append(load_result)
+            else:
+                # Default behavior: execute predefined scripts
+                if self.verbose:
+                    print(f"  Running {len(self._generated_scripts)} tests...")
+                
+                k6_results = self.k6_executor.execute_all(
+                    self._generated_scripts,
+                    timeout_per_test=300,
+                    verbose=self.verbose,
+                )
+                
+                # Convert K6Result to LoadTestResult
+                for k6_result in k6_results:
+                    load_result = LoadTestResult(
+                        test_type=k6_result.test_type,
+                        vus=k6_result.metrics.vus_max,
+                        duration=f"{k6_result.duration_seconds:.0f}s",
+                        total_requests=k6_result.metrics.total_requests,
+                        successful_requests=k6_result.metrics.total_requests - k6_result.metrics.failed_requests,
+                        failed_requests=k6_result.metrics.failed_requests,
+                        error_rate=k6_result.metrics.error_rate,
+                        latency_p50_ms=k6_result.metrics.latency_p50,
+                        latency_p95_ms=k6_result.metrics.latency_p95,
+                        latency_p99_ms=k6_result.metrics.latency_p99,
+                        throughput_rps=k6_result.metrics.requests_per_second,
+                        raw_output=k6_result.raw_stdout[:1000] if k6_result.raw_stdout else "",
+                    )
+                    load_results.append(load_result)
             
             state["load_results"] = load_results
             

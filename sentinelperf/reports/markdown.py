@@ -499,10 +499,23 @@ No test cases were executed."""
             "",
         ]
         
+        # Check if we have API-level telemetry
+        has_api_telemetry = (
+            state.telemetry_insights and 
+            state.telemetry_insights.endpoints and 
+            len(state.telemetry_insights.endpoints) > 0
+        )
+        
         # Get endpoints from telemetry or generated tests
         endpoints = []
-        if state.telemetry_insights and state.telemetry_insights.endpoints:
-            endpoints = [ep.path for ep in state.telemetry_insights.endpoints[:10]]
+        if has_api_telemetry:
+            for ep in state.telemetry_insights.endpoints[:10]:
+                if isinstance(ep, dict):
+                    endpoints.append(ep.get("path", str(ep)))
+                elif hasattr(ep, 'path'):
+                    endpoints.append(ep.path)
+                else:
+                    endpoints.append(str(ep))
         elif state.generated_tests:
             for test in state.generated_tests:
                 if "endpoints" in test:
@@ -511,12 +524,17 @@ No test cases were executed."""
                         if path not in endpoints:
                             endpoints.append(path)
         
+        # Add fallback note if no API-level telemetry
+        if not has_api_telemetry:
+            lines.append("*API-level telemetry not available; summary inferred from load execution.*")
+            lines.append("")
+        
         if not endpoints:
-            endpoints = ["/ (default)"]
+            endpoints = [state.target_url or "/ (default)"]
         
         # A) APIs Exercised
         lines.extend([
-            "### A) APIs Exercised",
+            "### A) APIs/Targets Exercised",
             "",
             "| API Endpoint | Test Phase | Load Applied | Observed Effect |",
             "|--------------|------------|--------------|-----------------|",
@@ -530,7 +548,7 @@ No test cases were executed."""
                 test_phases.add(phase)
         
         # Determine overall observed effect
-        overall_effect = "Stable"
+        overall_effect = "None"
         if state.breaking_point and state.breaking_point.vus_at_break > 0:
             if state.breaking_point.failure_type == "error_rate_breach":
                 overall_effect = "Errors increased"
@@ -539,7 +557,7 @@ No test cases were executed."""
             else:
                 overall_effect = "Degradation observed"
         elif state.failure_category == "no_failure":
-            overall_effect = "No degradation observed"
+            overall_effect = "None"
         
         # Generate load applied descriptions
         for endpoint in endpoints[:5]:  # Limit to 5 endpoints

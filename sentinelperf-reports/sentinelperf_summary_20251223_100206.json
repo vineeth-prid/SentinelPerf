@@ -1,0 +1,294 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-12-23T10:02:06.857561",
+  "status": "success",
+  "target": {
+    "url": "http://localhost:8765",
+    "environment": "test"
+  },
+  "execution": {
+    "started_at": "2025-12-23T10:01:11.491513",
+    "completed_at": null,
+    "duration_seconds": null,
+    "phase": "report_generation",
+    "errors": [
+      "No telemetry source configured or enabled"
+    ]
+  },
+  "telemetry": {
+    "available": false
+  },
+  "breaking_point": {
+    "detected": true,
+    "classification": "error_driven_collapse",
+    "message": "Breaking point at 22 VUs (error_rate_breach)",
+    "timeline": [
+      {
+        "timestamp": "t0",
+        "event_type": "load_change",
+        "description": "Load increased to 2 VUs (adaptive_2vus)",
+        "test_type": "adaptive_2vus",
+        "vus": 2,
+        "metrics": {
+          "rps": 2.937426509284999
+        }
+      },
+      {
+        "timestamp": "t1",
+        "event_type": "load_change",
+        "description": "Load increased to 7 VUs (adaptive_7vus)",
+        "test_type": "adaptive_7vus",
+        "vus": 7,
+        "metrics": {
+          "rps": 11.134465023399665
+        }
+      },
+      {
+        "timestamp": "t2",
+        "event_type": "load_change",
+        "description": "Load increased to 12 VUs (adaptive_12vus)",
+        "test_type": "adaptive_12vus",
+        "vus": 12,
+        "metrics": {
+          "rps": 17.495786626966392
+        }
+      },
+      {
+        "timestamp": "t3",
+        "event_type": "load_change",
+        "description": "Load increased to 17 VUs (adaptive_17vus)",
+        "test_type": "adaptive_17vus",
+        "vus": 17,
+        "metrics": {
+          "rps": 24.972122090809528
+        }
+      },
+      {
+        "timestamp": "t4",
+        "event_type": "load_change",
+        "description": "Load increased to 22 VUs (adaptive_22vus)",
+        "test_type": "adaptive_22vus",
+        "vus": 22,
+        "metrics": {
+          "rps": 24.37008541206189
+        }
+      },
+      {
+        "timestamp": "t5",
+        "event_type": "error_rate_breach",
+        "description": "Error rate crossed threshold (13.1% > 5.0%)",
+        "test_type": "adaptive_22vus",
+        "vus": 22,
+        "metrics": {
+          "error_rate": 0.13138686131386862,
+          "threshold": 0.05
+        }
+      },
+      {
+        "timestamp": "t6",
+        "event_type": "latency_degradation",
+        "description": "Latency slope changed (19.2x increase)",
+        "test_type": "adaptive_22vus",
+        "vus": 22,
+        "metrics": {
+          "latency_p95_slope": 19.182282070108943,
+          "threshold": 1.5
+        }
+      },
+      {
+        "timestamp": "t7",
+        "event_type": "latency_degradation",
+        "description": "Latency exceeded threshold (685ms > 200ms)",
+        "test_type": "adaptive_22vus",
+        "vus": 22,
+        "metrics": {
+          "latency_p95_absolute": 685.0781999999998,
+          "threshold": 200
+        }
+      },
+      {
+        "timestamp": "t8",
+        "event_type": "throughput_plateau",
+        "description": "Throughput plateaued (expected 14.7%, got -2.4%)",
+        "test_type": "adaptive_22vus",
+        "vus": 22,
+        "metrics": {
+          "throughput_plateau": -0.024108350766441463,
+          "threshold": 0.14705882352941177
+        }
+      }
+    ],
+    "vus_at_break": 22,
+    "rps_at_break": 24.37008541206189,
+    "failure_type": "error_rate_breach",
+    "threshold_exceeded": "error_rate > 0.05",
+    "observed_value": 0.13138686131386862,
+    "threshold_value": 0.05,
+    "confidence": 0.85,
+    "signals": [
+      "error_rate_breach at 22 VUs",
+      "Observed: 0.1314, Threshold: 0.0500",
+      "Severity: 2.63x threshold",
+      "Error rate: 13.14%",
+      "P95 latency: 685.1ms",
+      "Throughput: 24.4 RPS"
+    ]
+  },
+  "root_cause": {
+    "analyzed": true,
+    "root_cause_summary": "Error rate exceeded threshold causing cascading failures at 22 VUs (24.4 RPS)",
+    "primary_cause": "Error propagation and cascade effect",
+    "contributing_factors": [
+      "Throughput stopped scaling with load",
+      "Latency degradation detected",
+      "Error rate exceeded threshold"
+    ],
+    "confidence": 0.85,
+    "assumptions": [
+      "Load tests accurately simulate production traffic patterns",
+      "Telemetry data reflects actual system behavior"
+    ],
+    "limitations": [
+      "Analysis based on rules-only (LLM unavailable)",
+      "Low baseline confidence - limited historical data"
+    ],
+    "failure_pattern": "errors_before_latency",
+    "pattern_explanation": "Errors appeared before significant latency degradation. Likely causes: hard resource limits (memory OOM, file descriptors), explicit rate limiting, or downstream service failures. The system is failing fast rather than degrading gracefully.",
+    "llm_mode": "rules",
+    "llm_model": "",
+    "llm_latency_ms": 0.0
+  },
+  "recommendations": {
+    "recommendations": [
+      {
+        "action": "Inspect error types and downstream dependencies",
+        "rationale": "Errors cascaded causing system collapse (detected at 22 VUs, 24.4 RPS via error_rate_breach)",
+        "expected_impact": "Identify root cause of error propagation",
+        "risk": "LOW",
+        "confidence": 0.85,
+        "priority": 1
+      },
+      {
+        "action": "Implement circuit breaker pattern",
+        "rationale": "Prevent cascade failures from propagating",
+        "expected_impact": "Graceful degradation instead of collapse",
+        "risk": "MEDIUM",
+        "confidence": 0.815,
+        "priority": 2
+      },
+      {
+        "action": "Add rate limiting at entry points",
+        "rationale": "Protect system from overload-induced errors",
+        "expected_impact": "Controlled rejection instead of uncontrolled failure",
+        "risk": "MEDIUM",
+        "confidence": 0.7799999999999999,
+        "priority": 3
+      }
+    ],
+    "limitations": [
+      "Recommendations are guidance, not prescriptions",
+      "Actual fixes require system-specific investigation"
+    ],
+    "polished_by_llm": false,
+    "llm_model": "",
+    "llm_latency_ms": 0.0
+  },
+  "load_tests": [
+    {
+      "test_type": "adaptive_2vus",
+      "vus": 2,
+      "duration": "11s",
+      "total_requests": 30,
+      "successful_requests": 30,
+      "failed_requests": 0,
+      "error_rate": 0,
+      "latency": {
+        "p50_ms": 31.288511,
+        "p95_ms": 35.7130729,
+        "p99_ms": 36.53113971
+      },
+      "throughput_rps": 2.937426509284999,
+      "timestamp": "2025-12-23T10:02:06.808282"
+    },
+    {
+      "test_type": "adaptive_7vus",
+      "vus": 7,
+      "duration": "11s",
+      "total_requests": 117,
+      "successful_requests": 117,
+      "failed_requests": 0,
+      "error_rate": 0,
+      "latency": {
+        "p50_ms": 31.584521,
+        "p95_ms": 35.5592266,
+        "p99_ms": 36.38408856
+      },
+      "throughput_rps": 11.134465023399665,
+      "timestamp": "2025-12-23T10:02:06.808286"
+    },
+    {
+      "test_type": "adaptive_12vus",
+      "vus": 12,
+      "duration": "11s",
+      "total_requests": 181,
+      "successful_requests": 180,
+      "failed_requests": 1,
+      "error_rate": 0.0055248618784530384,
+      "latency": {
+        "p50_ms": 30.970742,
+        "p95_ms": 35.646389,
+        "p99_ms": 44.35643859999993
+      },
+      "throughput_rps": 17.495786626966392,
+      "timestamp": "2025-12-23T10:02:06.808289"
+    },
+    {
+      "test_type": "adaptive_17vus",
+      "vus": 17,
+      "duration": "11s",
+      "total_requests": 258,
+      "successful_requests": 258,
+      "failed_requests": 0,
+      "error_rate": 0,
+      "latency": {
+        "p50_ms": 30.734128,
+        "p95_ms": 35.71411355,
+        "p99_ms": 36.572989299999996
+      },
+      "throughput_rps": 24.972122090809528,
+      "timestamp": "2025-12-23T10:02:06.808292"
+    },
+    {
+      "test_type": "adaptive_22vus",
+      "vus": 22,
+      "duration": "12s",
+      "total_requests": 274,
+      "successful_requests": 238,
+      "failed_requests": 36,
+      "error_rate": 0.13138686131386862,
+      "latency": {
+        "p50_ms": 32.467067,
+        "p95_ms": 685.0781999999998,
+        "p99_ms": 1279.9877098499999
+      },
+      "throughput_rps": 24.37008541206189,
+      "timestamp": "2025-12-23T10:02:06.808294"
+    }
+  ],
+  "test_coverage": {
+    "max_vus_reached": 22,
+    "max_sustained_rps": 25.0,
+    "total_requests_executed": 860,
+    "longest_load_duration_seconds": 12,
+    "spike_severity": "not_tested",
+    "recovery_observed": false
+  },
+  "ci_cd": {
+    "exit_code": 0,
+    "thresholds_passed": false,
+    "summary": "FAIL: Breaking point at 22 VUs (error_rate_breach)",
+    "breaking_point_vus": 22,
+    "root_cause_confidence": 0.85,
+    "recommendation_count": 3
+  }
+}

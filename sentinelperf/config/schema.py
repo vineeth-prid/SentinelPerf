@@ -64,6 +64,10 @@ class LoadConfig(BaseModel):
     
     # Adaptive settings
     adaptive_step: int = Field(default=10, ge=1, description="VU increment step for adaptive load")
+    adaptive_enabled: bool = Field(default=False, description="Enable adaptive VU escalation")
+    adaptive_hold_seconds: int = Field(default=15, ge=5, description="Hold duration per step in adaptive mode")
+    adaptive_latency_slope_threshold: float = Field(default=2.0, ge=1.0, description="Max latency slope before switching to fine mode")
+    adaptive_fine_step_divisor: int = Field(default=4, ge=2, description="Divisor for fine step after degradation")
 
 
 class LLMConfig(BaseModel):

@@ -263,10 +263,23 @@ class JSONReporter:
     
     def _api_trigger_summary(self, state: AgentState) -> Dict[str, Any]:
         """API & Backend Trigger Summary - describes which APIs were tested"""
+        # Check if we have API-level telemetry
+        has_api_telemetry = (
+            state.telemetry_insights and 
+            state.telemetry_insights.endpoints and 
+            len(state.telemetry_insights.endpoints) > 0
+        )
+        
         # Get endpoints
         endpoints = []
-        if state.telemetry_insights and state.telemetry_insights.endpoints:
-            endpoints = [ep.get("path", ep) if isinstance(ep, dict) else str(ep) for ep in state.telemetry_insights.endpoints[:10]]
+        if has_api_telemetry:
+            for ep in state.telemetry_insights.endpoints[:10]:
+                if isinstance(ep, dict):
+                    endpoints.append(ep.get("path", str(ep)))
+                elif hasattr(ep, 'path'):
+                    endpoints.append(ep.path)
+                else:
+                    endpoints.append(str(ep))
         elif state.generated_tests:
             for test in state.generated_tests:
                 if "endpoints" in test:
@@ -276,7 +289,7 @@ class JSONReporter:
                             endpoints.append(path)
         
         if not endpoints:
-            endpoints = ["/ (default)"]
+            endpoints = [state.target_url or "/ (default)"]
         
         # Test phases
         test_phases = set()
@@ -286,7 +299,7 @@ class JSONReporter:
                 test_phases.add(phase)
         
         # Observed effect
-        overall_effect = "stable"
+        overall_effect = "none"
         if state.breaking_point and state.breaking_point.vus_at_break > 0:
             if state.breaking_point.failure_type == "error_rate_breach":
                 overall_effect = "errors_increased"
@@ -295,7 +308,7 @@ class JSONReporter:
             else:
                 overall_effect = "degradation_observed"
         elif state.failure_category == "no_failure":
-            overall_effect = "no_degradation"
+            overall_effect = "none"
         
         # Max VUs
         max_vus = max((r.vus for r in state.load_results), default=0) if state.load_results else 0
@@ -321,6 +334,8 @@ class JSONReporter:
                     })
         
         return {
+            "api_telemetry_available": has_api_telemetry,
+            "note": None if has_api_telemetry else "API-level telemetry not available; summary inferred from load execution",
             "apis_exercised": apis_exercised,
             "apis_contributing_to_instability": instability_apis,
             "total_endpoints_tested": len(endpoints),

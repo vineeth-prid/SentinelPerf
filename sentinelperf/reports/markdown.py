@@ -501,7 +501,7 @@ No test cases were executed."""
         ]
         
         # Check if we have API-level telemetry
-        has_api_telemetry = (
+        has_api_telemetry = bool(
             state.telemetry_insights and 
             state.telemetry_insights.endpoints and 
             len(state.telemetry_insights.endpoints) > 0

@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "generated_at": "2025-12-23T09:52:10.898451",
+  "generated_at": "2025-12-23T09:52:27.353020",
   "status": "success",
   "target": {
     "url": "http://localhost:8765",
     "environment": "test"
   },
   "execution": {
-    "started_at": "2025-12-23T09:52:10.849333",
+    "started_at": "2025-12-23T09:52:27.303872",
     "completed_at": null,
     "duration_seconds": null,
     "phase": "report_generation",
@@ -109,7 +109,7 @@
         "p99_ms": 500
       },
       "throughput_rps": 20,
-      "timestamp": "2025-12-23T09:52:10.851069"
+      "timestamp": "2025-12-23T09:52:27.305554"
     },
     {
       "test_type": "stress",
@@ -125,7 +125,7 @@
         "p99_ms": 500
       },
       "throughput_rps": 300,
-      "timestamp": "2025-12-23T09:52:10.851073"
+      "timestamp": "2025-12-23T09:52:27.305557"
     },
     {
       "test_type": "spike",
@@ -141,7 +141,7 @@
         "p99_ms": 500
       },
       "throughput_rps": 300,
-      "timestamp": "2025-12-23T09:52:10.851075"
+      "timestamp": "2025-12-23T09:52:27.305559"
     }
   ],
   "test_coverage": {

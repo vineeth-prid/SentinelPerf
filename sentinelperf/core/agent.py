@@ -956,13 +956,23 @@ class SentinelPerfAgent:
         )
         
         # Store root cause analysis result
+        # Apply infra saturation penalty to confidence
+        infra_saturation = state.get("infra_saturation", {})
+        confidence_penalty = infra_saturation.get("confidence_penalty", 0.0)
+        adjusted_confidence = max(0.1, llm_output.confidence - confidence_penalty)
+        
+        # Add infra warnings to limitations
+        limitations = list(llm_output.limitations)
+        if infra_saturation.get("warnings"):
+            limitations.append("Results may be infra-limited (high resource usage detected)")
+        
         state["root_cause"] = RootCauseAnalysis(
             root_cause_summary=llm_output.root_cause_summary,
             primary_cause=llm_output.primary_cause,
             contributing_factors=llm_output.contributing_factors,
-            confidence=llm_output.confidence,
+            confidence=adjusted_confidence,
             assumptions=llm_output.assumptions,
-            limitations=llm_output.limitations,
+            limitations=limitations,
             failure_pattern=llm_output.failure_pattern,
             pattern_explanation=llm_output.pattern_explanation,
             llm_mode=mode,

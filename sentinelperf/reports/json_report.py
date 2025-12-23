@@ -163,6 +163,169 @@ class JSONReporter:
             for r in state.load_results
         ]
     
+    def _test_case_summary(self, state: AgentState) -> Dict[str, Any]:
+        """Test Case Summary - describes what tests were executed"""
+        if not state.load_results:
+            return {"test_cases": []}
+        
+        test_semantics = {
+            "baseline": {"purpose": "Steady validation", "load_pattern": "Constant load"},
+            "stress": {"purpose": "Incremental capacity test", "load_pattern": "Ramping load"},
+            "spike": {"purpose": "Burst resilience test", "load_pattern": "Sudden spike"},
+            "adaptive": {"purpose": "Adaptive capacity search", "load_pattern": "Stepwise escalation"},
+            "sustained": {"purpose": "Long duration stability", "load_pattern": "Sustained load"},
+            "recovery": {"purpose": "Recovery behavior test", "load_pattern": "Overload then drop"},
+        }
+        
+        test_cases = []
+        seen_types = set()
+        
+        for r in state.load_results:
+            test_type_base = r.test_type.split("_")[0].lower()
+            
+            if test_type_base in seen_types:
+                continue
+            
+            type_results = [
+                res for res in state.load_results 
+                if res.test_type.split("_")[0].lower() == test_type_base
+            ]
+            max_vus = max(res.vus for res in type_results)
+            duration = type_results[0].duration if type_results else "N/A"
+            
+            semantics = test_semantics.get(test_type_base, {"purpose": "Performance test", "load_pattern": "Variable"})
+            
+            test_cases.append({
+                "test_case": test_type_base,
+                "purpose": semantics["purpose"],
+                "load_pattern": semantics["load_pattern"],
+                "max_vus": max_vus,
+                "duration": duration,
+            })
+            seen_types.add(test_type_base)
+        
+        return {"test_cases": test_cases}
+    
+    def _test_case_coverage_summary(self, state: AgentState) -> Dict[str, Any]:
+        """Test Case Coverage Summary - describes coverage achieved"""
+        test_types_run = set()
+        if state.load_results:
+            for r in state.load_results:
+                test_type_base = r.test_type.split("_")[0].lower()
+                test_types_run.add(test_type_base)
+        
+        # Load Pattern Coverage
+        load_patterns = {
+            "baseline_steady": "baseline" in test_types_run,
+            "stress_incremental_ramp": "stress" in test_types_run,
+            "spike_sudden_burst": "spike" in test_types_run,
+            "soak_long_duration": "sustained" in test_types_run,
+            "recovery_after_overload": "recovery" in test_types_run,
+        }
+        
+        # Failure Mode Coverage
+        observed_failures = set()
+        if state.failure_timeline:
+            for event in state.failure_timeline:
+                event_type = event.get("event_type", "")
+                if event_type == "error_rate_breach":
+                    observed_failures.add("error_rate_breach")
+                elif event_type == "latency_degradation":
+                    observed_failures.add("latency_degradation")
+                elif event_type == "throughput_plateau":
+                    observed_failures.add("throughput_plateau")
+                elif event_type == "saturation":
+                    observed_failures.add("infrastructure_saturation")
+        
+        if state.failure_category == "instability_under_burst":
+            observed_failures.add("burst_instability")
+        
+        failure_modes = {
+            "error_rate_breach": "error_rate_breach" in observed_failures,
+            "latency_degradation": "latency_degradation" in observed_failures,
+            "throughput_plateau": "throughput_plateau" in observed_failures,
+            "infrastructure_saturation": "infrastructure_saturation" in observed_failures,
+            "burst_instability": "burst_instability" in observed_failures,
+        }
+        
+        # Observability Coverage
+        observability = {
+            "application_telemetry": state.telemetry_insights is not None,
+            "infrastructure_metrics": state.infra_saturation is not None,
+            "load_generator_metrics": len(state.load_results) > 0,
+        }
+        
+        return {
+            "load_pattern_coverage": load_patterns,
+            "failure_mode_coverage": failure_modes,
+            "observability_coverage": observability,
+        }
+    
+    def _api_trigger_summary(self, state: AgentState) -> Dict[str, Any]:
+        """API & Backend Trigger Summary - describes which APIs were tested"""
+        # Get endpoints
+        endpoints = []
+        if state.telemetry_insights and state.telemetry_insights.endpoints:
+            endpoints = [ep.get("path", ep) if isinstance(ep, dict) else str(ep) for ep in state.telemetry_insights.endpoints[:10]]
+        elif state.generated_tests:
+            for test in state.generated_tests:
+                if "endpoints" in test:
+                    for ep in test["endpoints"]:
+                        path = ep.get("path", ep) if isinstance(ep, dict) else str(ep)
+                        if path not in endpoints:
+                            endpoints.append(path)
+        
+        if not endpoints:
+            endpoints = ["/ (default)"]
+        
+        # Test phases
+        test_phases = set()
+        if state.load_results:
+            for r in state.load_results:
+                phase = r.test_type.split("_")[0].lower()
+                test_phases.add(phase)
+        
+        # Observed effect
+        overall_effect = "stable"
+        if state.breaking_point and state.breaking_point.vus_at_break > 0:
+            if state.breaking_point.failure_type == "error_rate_breach":
+                overall_effect = "errors_increased"
+            elif state.breaking_point.failure_type == "latency_degradation":
+                overall_effect = "latency_increased"
+            else:
+                overall_effect = "degradation_observed"
+        elif state.failure_category == "no_failure":
+            overall_effect = "no_degradation"
+        
+        # Max VUs
+        max_vus = max((r.vus for r in state.load_results), default=0) if state.load_results else 0
+        
+        # APIs exercised
+        apis_exercised = []
+        for endpoint in endpoints[:5]:
+            apis_exercised.append({
+                "endpoint": endpoint,
+                "test_phases": sorted(list(test_phases)),
+                "max_vus_applied": max_vus,
+                "observed_effect": overall_effect,
+            })
+        
+        # APIs contributing to instability
+        instability_apis = []
+        if state.breaking_point and state.breaking_point.signals:
+            for signal in state.breaking_point.signals:
+                if "/" in signal:
+                    instability_apis.append({
+                        "signal": signal,
+                        "failure_type": state.breaking_point.failure_type,
+                    })
+        
+        return {
+            "apis_exercised": apis_exercised,
+            "apis_contributing_to_instability": instability_apis,
+            "total_endpoints_tested": len(endpoints),
+        }
+    
     def _test_coverage_summary(self, state: AgentState) -> Dict[str, Any]:
         """Test coverage summary"""
         if not state.load_results:

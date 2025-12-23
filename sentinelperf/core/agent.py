@@ -633,6 +633,39 @@ class SentinelPerfAgent:
             
             state["load_results"] = load_results
         
+        # Check infrastructure saturation after tests
+        post_test_infra = check_infra_saturation()
+        
+        # Collect infra warnings
+        infra_warnings = []
+        if pre_test_infra.is_saturated:
+            infra_warnings.extend(pre_test_infra.warnings)
+        if post_test_infra.is_saturated:
+            for w in post_test_infra.warnings:
+                if w not in infra_warnings:
+                    infra_warnings.append(w)
+        
+        # Store infra saturation data in state
+        state["infra_saturation"] = {
+            "pre_test": {
+                "cpu_percent": pre_test_infra.cpu_percent,
+                "memory_percent": pre_test_infra.memory_percent,
+                "saturated": pre_test_infra.is_saturated,
+            },
+            "post_test": {
+                "cpu_percent": post_test_infra.cpu_percent,
+                "memory_percent": post_test_infra.memory_percent,
+                "saturated": post_test_infra.is_saturated,
+            },
+            "warnings": infra_warnings,
+            "confidence_penalty": max(pre_test_infra.confidence_penalty, post_test_infra.confidence_penalty),
+        }
+        
+        if self.verbose and infra_warnings:
+            print(f"  ⚠ Infrastructure warnings: {len(infra_warnings)}")
+            for w in infra_warnings[:2]:
+                print(f"    {w}")
+        
         return state
     
     def _node_results_collection(self, state: Dict[str, Any]) -> Dict[str, Any]:

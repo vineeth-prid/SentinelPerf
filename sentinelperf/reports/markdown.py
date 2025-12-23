@@ -229,7 +229,7 @@ Root cause analysis was not performed."""
             if rc.assumptions else "- None"
         
         # Limitations
-        limitations = "\n".join([f"- {l}" for l in rc.limitations]) \
+        limitations = "\n".join([f"- {lim}" for lim in rc.limitations]) \
             if rc.limitations else "- None"
         
         # Model info

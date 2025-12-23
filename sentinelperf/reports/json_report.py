@@ -67,6 +67,7 @@ class JSONReporter:
             "root_cause": self._root_cause_summary(state),
             "recommendations": state.recommendations or {"recommendations": [], "limitations": []},
             "load_tests": self._load_tests_summary(state),
+            "test_coverage": self._test_coverage_summary(state),
             
             "ci_cd": self._cicd_output(state, result),
         }

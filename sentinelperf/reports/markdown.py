@@ -279,6 +279,69 @@ No load test results available."""
             )
         
         return header + "\n" + "\n".join(rows)
+    
+    def _test_coverage_summary_section(self, state: AgentState) -> str:
+        """Test coverage summary section"""
+        if not state.load_results:
+            return """## Test Coverage Summary
+
+No test coverage data available."""
+        
+        results = state.load_results
+        
+        # Max VUs reached
+        max_vus = max(r.vus for r in results)
+        
+        # Max sustained RPS
+        max_rps = max(r.throughput_rps for r in results)
+        
+        # Total requests executed
+        total_requests = sum(r.total_requests for r in results)
+        
+        # Longest continuous load duration
+        durations = []
+        for r in results:
+            dur_str = r.duration.rstrip('s')
+            try:
+                durations.append(int(dur_str))
+            except ValueError:
+                durations.append(0)
+        longest_duration = max(durations) if durations else 0
+        
+        # Spike severity description
+        spike_results = [r for r in results if 'spike' in r.test_type.lower()]
+        if spike_results:
+            spike_error = max(r.error_rate for r in spike_results)
+            if spike_error >= 0.5:
+                spike_severity = "Severe (>50% errors)"
+            elif spike_error >= 0.2:
+                spike_severity = "Moderate (20-50% errors)"
+            elif spike_error >= 0.05:
+                spike_severity = "Mild (5-20% errors)"
+            else:
+                spike_severity = "Negligible (<5% errors)"
+        else:
+            spike_severity = "Not tested"
+        
+        # Recovery observed
+        recovery_observed = "No"
+        for i in range(1, len(results)):
+            prev = results[i-1]
+            curr = results[i]
+            if prev.error_rate > 0.1 and curr.error_rate < 0.05:
+                recovery_observed = "Yes"
+                break
+        
+        return f"""## Test Coverage Summary
+
+| Metric | Value |
+|--------|-------|
+| Max VUs Reached | {max_vus} |
+| Max Sustained RPS | {max_rps:.1f} |
+| Total Requests Executed | {total_requests:,} |
+| Longest Load Duration | {longest_duration}s |
+| Spike Severity | {spike_severity} |
+| Recovery Observed | {recovery_observed} |"""
 
     def _telemetry_section(self, state: AgentState) -> str:
         """Telemetry data section"""

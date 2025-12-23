@@ -363,3 +363,76 @@ class TestGenerator:
             step_vus=kwargs.get("step_vus", 10),
             step_duration=kwargs.get("step_duration", "30s"),
         )
+    
+    def generate_sustained_test(
+        self,
+        endpoints: List[Dict[str, Any]],
+        target_vus: int = 20,
+        duration: str = "5m",
+    ) -> TestScript:
+        """
+        Generate sustained load test.
+        
+        Purpose: Test system stability under moderate load for extended duration.
+        """
+        stages = [
+            TestStage(duration="10s", target=target_vus),  # Ramp up
+            TestStage(duration=duration, target=target_vus),  # Sustained load
+            TestStage(duration="10s", target=0),  # Ramp down
+        ]
+        
+        thresholds = {
+            "http_req_failed": ["rate<0.1"],
+            "http_req_duration": ["p(95)<5000"],
+        }
+        
+        return TestScript(
+            test_type=TestType.SUSTAINED,
+            name="sustained_test",
+            base_url=self.base_url,
+            endpoints=self._parse_endpoints(endpoints),
+            stages=stages,
+            thresholds=thresholds,
+            headers=self.auth_headers,
+        )
+    
+    def generate_recovery_test(
+        self,
+        endpoints: List[Dict[str, Any]],
+        breaking_vus: int,
+        baseline_vus: int = 5,
+        overload_duration: str = "30s",
+        recovery_duration: str = "60s",
+    ) -> TestScript:
+        """
+        Generate recovery test.
+        
+        Purpose: Push past breaking point, drop to near zero, observe recovery.
+        """
+        # Push 20% past breaking point
+        overload_vus = int(breaking_vus * 1.2)
+        
+        stages = [
+            TestStage(duration="10s", target=baseline_vus),  # Warmup
+            TestStage(duration="5s", target=overload_vus),   # Ramp to overload
+            TestStage(duration=overload_duration, target=overload_vus),  # Hold overload
+            TestStage(duration="3s", target=1),  # Drop to near zero
+            TestStage(duration=recovery_duration, target=baseline_vus),  # Recovery period
+            TestStage(duration="5s", target=0),  # Ramp down
+        ]
+        
+        # Very lenient during overload, strict during recovery
+        thresholds = {
+            "http_req_failed": ["rate<0.8"],  # Allow high failures during overload
+            "http_req_duration": ["p(95)<15000"],
+        }
+        
+        return TestScript(
+            test_type=TestType.RECOVERY,
+            name="recovery_test",
+            base_url=self.base_url,
+            endpoints=self._parse_endpoints(endpoints),
+            stages=stages,
+            thresholds=thresholds,
+            headers=self.auth_headers,
+        )

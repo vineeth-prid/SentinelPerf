@@ -264,7 +264,7 @@ class JSONReporter:
     def _api_trigger_summary(self, state: AgentState) -> Dict[str, Any]:
         """API & Backend Trigger Summary - describes which APIs were tested"""
         # Check if we have API-level telemetry
-        has_api_telemetry = (
+        has_api_telemetry = bool(
             state.telemetry_insights and 
             state.telemetry_insights.endpoints and 
             len(state.telemetry_insights.endpoints) > 0

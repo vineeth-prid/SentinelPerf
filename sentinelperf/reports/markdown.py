@@ -91,6 +91,42 @@ class MarkdownReporter:
         
         return "\n".join(summary_lines)
     
+    def _infra_warnings_section(self, state: AgentState) -> str:
+        """Infrastructure saturation warnings"""
+        if not state.infra_saturation:
+            return ""
+        
+        infra = state.infra_saturation
+        warnings = infra.get("warnings", [])
+        
+        if not warnings:
+            return ""
+        
+        pre = infra.get("pre_test", {})
+        post = infra.get("post_test", {})
+        
+        lines = [
+            "## ⚠️ Infrastructure Warnings",
+            "",
+            "**High resource usage was detected during testing. Results may be infra-limited.**",
+            "",
+            "| Phase | CPU | Memory |",
+            "|-------|-----|--------|",
+            f"| Pre-test | {pre.get('cpu_percent', 0):.1f}% | {pre.get('memory_percent', 0):.1f}% |",
+            f"| Post-test | {post.get('cpu_percent', 0):.1f}% | {post.get('memory_percent', 0):.1f}% |",
+            "",
+            "### Warnings",
+            "",
+        ]
+        
+        for w in warnings:
+            lines.append(f"- {w}")
+        
+        lines.append("")
+        lines.append(f"*Confidence penalty applied: -{infra.get('confidence_penalty', 0)*100:.0f}%*")
+        
+        return "\n".join(lines)
+    
     def _breaking_point_section(self, state: AgentState) -> str:
         """Breaking point details with classification and timeline"""
         sections = []

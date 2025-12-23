@@ -127,6 +127,8 @@ class JSONReporter:
             "confidence": rc.confidence,
             "assumptions": rc.assumptions,
             "limitations": rc.limitations,
+            "failure_pattern": rc.failure_pattern,
+            "pattern_explanation": rc.pattern_explanation,
             "llm_mode": rc.llm_mode,
             "llm_model": rc.llm_model,
             "llm_latency_ms": rc.llm_latency_ms,

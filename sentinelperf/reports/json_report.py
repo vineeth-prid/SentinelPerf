@@ -68,6 +68,7 @@ class JSONReporter:
             "recommendations": state.recommendations or {"recommendations": [], "limitations": []},
             "load_tests": self._load_tests_summary(state),
             "test_coverage": self._test_coverage_summary(state),
+            "infra_saturation": state.infra_saturation or {"warnings": [], "saturated": False},
             
             "ci_cd": self._cicd_output(state, result),
         }

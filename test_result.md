@@ -15,6 +15,13 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 
 **Confidence Consistency**: All scenarios show proper confidence flow from BP → RC → Recommendations
 
+### New Report Sections (Added 2024-12-23)
+- ✅ **Test Case Summary** - Shows test cases with purpose, load pattern, max VUs, duration
+- ✅ **Test Case Coverage Summary** - Shows load pattern/failure mode/observability coverage
+- ✅ **API & Backend Trigger Summary** - Shows APIs exercised and instability contributors
+- ✅ JSON report updated with structured objects for all 3 sections
+- ✅ Markdown report updated with formatted tables for all 3 sections
+
 ### CLI UX Polish
 - ✅ Clear error messages with color coding
 - ✅ Better warnings display
@@ -31,6 +38,8 @@ For each scenario:
 
 ### Files Modified
 - `/app/sentinelperf/reports/console.py` - Better formatting, ANSI colors
+- `/app/sentinelperf/reports/markdown.py` - Added 3 new report sections
+- `/app/sentinelperf/reports/json_report.py` - Added 3 new JSON objects
 - `/app/sentinelperf/cli.py` - Improved error messages
 
 ### Test Commands

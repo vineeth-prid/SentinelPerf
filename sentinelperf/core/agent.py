@@ -517,6 +517,10 @@ class SentinelPerfAgent:
         if self.verbose:
             print("[3/8] Executing load tests...")
         
+        # Check infrastructure saturation before tests
+        from sentinelperf.telemetry.infra_monitor import check_infra_saturation
+        pre_test_infra = check_infra_saturation()
+        
         # Check if k6 is available
         k6_available = self.k6_executor.check_available()
         

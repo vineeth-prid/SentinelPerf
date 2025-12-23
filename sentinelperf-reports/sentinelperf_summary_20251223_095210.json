@@ -1,13 +1,13 @@
 {
   "version": "1.0",
-  "generated_at": "2025-12-23T09:39:54.644315",
+  "generated_at": "2025-12-23T09:52:10.898451",
   "status": "success",
   "target": {
     "url": "http://localhost:8765",
     "environment": "test"
   },
   "execution": {
-    "started_at": "2025-12-23T09:39:54.447602",
+    "started_at": "2025-12-23T09:52:10.849333",
     "completed_at": null,
     "duration_seconds": null,
     "phase": "report_generation",
@@ -60,6 +60,8 @@
       "Low baseline confidence - limited historical data",
       "Limited timeline events for detailed analysis"
     ],
+    "failure_pattern": "no_violations",
+    "pattern_explanation": "No threshold violations detected during testing",
     "llm_mode": "rules",
     "llm_model": "",
     "llm_latency_ms": 0.0
@@ -107,7 +109,7 @@
         "p99_ms": 500
       },
       "throughput_rps": 20,
-      "timestamp": "2025-12-23T09:39:54.449952"
+      "timestamp": "2025-12-23T09:52:10.851069"
     },
     {
       "test_type": "stress",
@@ -123,7 +125,7 @@
         "p99_ms": 500
       },
       "throughput_rps": 300,
-      "timestamp": "2025-12-23T09:39:54.449956"
+      "timestamp": "2025-12-23T09:52:10.851073"
     },
     {
       "test_type": "spike",
@@ -139,7 +141,7 @@
         "p99_ms": 500
       },
       "throughput_rps": 300,
-      "timestamp": "2025-12-23T09:39:54.449958"
+      "timestamp": "2025-12-23T09:52:10.851075"
     }
   ],
   "test_coverage": {

@@ -147,6 +147,9 @@ class AgentState:
     # Recommendations
     recommendations: Optional[Dict[str, Any]] = None  # RecommendationResult.to_dict()
     
+    # Infrastructure saturation
+    infra_saturation: Optional[Dict[str, Any]] = None
+    
     # Error tracking
     errors: List[str] = field(default_factory=list)
     

@@ -157,6 +157,72 @@ class JSONReporter:
             for r in state.load_results
         ]
     
+    def _test_coverage_summary(self, state: AgentState) -> Dict[str, Any]:
+        """Test coverage summary"""
+        if not state.load_results:
+            return {
+                "max_vus_reached": 0,
+                "max_sustained_rps": 0,
+                "total_requests_executed": 0,
+                "longest_load_duration_seconds": 0,
+                "spike_severity": "not_tested",
+                "recovery_observed": False,
+            }
+        
+        results = state.load_results
+        
+        # Max VUs reached
+        max_vus = max(r.vus for r in results)
+        
+        # Max sustained RPS
+        max_rps = max(r.throughput_rps for r in results)
+        
+        # Total requests executed
+        total_requests = sum(r.total_requests for r in results)
+        
+        # Longest continuous load duration
+        durations = []
+        for r in results:
+            dur_str = r.duration.rstrip('s')
+            try:
+                durations.append(int(dur_str))
+            except ValueError:
+                durations.append(0)
+        longest_duration = max(durations) if durations else 0
+        
+        # Spike severity
+        spike_results = [r for r in results if 'spike' in r.test_type.lower()]
+        if spike_results:
+            spike_error = max(r.error_rate for r in spike_results)
+            if spike_error >= 0.5:
+                spike_severity = "severe"
+            elif spike_error >= 0.2:
+                spike_severity = "moderate"
+            elif spike_error >= 0.05:
+                spike_severity = "mild"
+            else:
+                spike_severity = "negligible"
+        else:
+            spike_severity = "not_tested"
+        
+        # Recovery observed
+        recovery_observed = False
+        for i in range(1, len(results)):
+            prev = results[i-1]
+            curr = results[i]
+            if prev.error_rate > 0.1 and curr.error_rate < 0.05:
+                recovery_observed = True
+                break
+        
+        return {
+            "max_vus_reached": max_vus,
+            "max_sustained_rps": round(max_rps, 1),
+            "total_requests_executed": total_requests,
+            "longest_load_duration_seconds": longest_duration,
+            "spike_severity": spike_severity,
+            "recovery_observed": recovery_observed,
+        }
+    
     def _cicd_output(self, state: AgentState, result: ExecutionResult) -> Dict[str, Any]:
         """
         CI/CD-specific output for pipeline integration.

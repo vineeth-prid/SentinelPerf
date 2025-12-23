@@ -192,6 +192,7 @@ class SentinelPerfAgent:
             failure_analysis=d.get("failure_analysis"),
             root_cause=d.get("root_cause"),
             recommendations=d.get("recommendations"),
+            infra_saturation=d.get("infra_saturation"),
             errors=d.get("errors", []),
         )
         

@@ -696,7 +696,120 @@ class SentinelPerfAgent:
                 print(f"    Category: {result.primary_category.value}")
                 print(f"    Violations: {len(result.violations)}")
         
+        # Run destructive tests if enabled and breaking point detected
+        if self.config.load.destructive_enabled:
+            self._run_destructive_tests(state, result)
+        
         return state
+    
+    def _run_destructive_tests(
+        self,
+        state: Dict[str, Any],
+        bp_result,
+    ) -> None:
+        """Run optional destructive test scenarios"""
+        if self.verbose:
+            print("  Running destructive tests...")
+        
+        load_results = state.get("load_results", [])
+        endpoints = self._get_test_endpoints()
+        
+        # Sustained test
+        sustained_vus = self.config.load.sustained_test_vus
+        if sustained_vus == 0:
+            # Auto-calculate from baseline (50% of breaking point or initial)
+            if bp_result.detected:
+                sustained_vus = max(1, bp_result.breaking_point.vus_at_break // 2)
+            else:
+                sustained_vus = self.config.load.initial_vus * 2
+        
+        if self.verbose:
+            print(f"    Sustained test: {sustained_vus} VUs for {self.config.load.sustained_test_duration}")
+        
+        sustained_script = self._test_generator.generate_sustained_test(
+            endpoints=endpoints,
+            target_vus=sustained_vus,
+            duration=self.config.load.sustained_test_duration,
+        )
+        
+        sustained_results = self.k6_executor.execute_all(
+            [sustained_script],
+            timeout_per_test=600,
+            verbose=False,
+        )
+        
+        for k6_result in sustained_results:
+            load_result = LoadTestResult(
+                test_type=k6_result.test_type,
+                vus=k6_result.metrics.vus_max,
+                duration=f"{k6_result.duration_seconds:.0f}s",
+                total_requests=k6_result.metrics.total_requests,
+                successful_requests=k6_result.metrics.total_requests - k6_result.metrics.failed_requests,
+                failed_requests=k6_result.metrics.failed_requests,
+                error_rate=k6_result.metrics.error_rate,
+                latency_p50_ms=k6_result.metrics.latency_p50,
+                latency_p95_ms=k6_result.metrics.latency_p95,
+                latency_p99_ms=k6_result.metrics.latency_p99,
+                throughput_rps=k6_result.metrics.requests_per_second,
+                raw_output="",
+            )
+            load_results.append(load_result)
+            if self.verbose:
+                print(f"      ✓ Sustained: {load_result.error_rate:.1%} errors, P95: {load_result.latency_p95_ms:.0f}ms")
+        
+        # Recovery test (only if breaking point detected and enabled)
+        if self.config.load.recovery_test_enabled and bp_result.detected:
+            breaking_vus = bp_result.breaking_point.vus_at_break
+            
+            if self.verbose:
+                print(f"    Recovery test: push to {int(breaking_vus * 1.2)} VUs, then recover")
+            
+            recovery_script = self._test_generator.generate_recovery_test(
+                endpoints=endpoints,
+                breaking_vus=breaking_vus,
+                baseline_vus=self.config.load.initial_vus,
+            )
+            
+            recovery_results = self.k6_executor.execute_all(
+                [recovery_script],
+                timeout_per_test=300,
+                verbose=False,
+            )
+            
+            for k6_result in recovery_results:
+                load_result = LoadTestResult(
+                    test_type=k6_result.test_type,
+                    vus=k6_result.metrics.vus_max,
+                    duration=f"{k6_result.duration_seconds:.0f}s",
+                    total_requests=k6_result.metrics.total_requests,
+                    successful_requests=k6_result.metrics.total_requests - k6_result.metrics.failed_requests,
+                    failed_requests=k6_result.metrics.failed_requests,
+                    error_rate=k6_result.metrics.error_rate,
+                    latency_p50_ms=k6_result.metrics.latency_p50,
+                    latency_p95_ms=k6_result.metrics.latency_p95,
+                    latency_p99_ms=k6_result.metrics.latency_p99,
+                    throughput_rps=k6_result.metrics.requests_per_second,
+                    raw_output="",
+                )
+                load_results.append(load_result)
+                if self.verbose:
+                    print(f"      ✓ Recovery: {load_result.error_rate:.1%} errors, P95: {load_result.latency_p95_ms:.0f}ms")
+        
+        state["load_results"] = load_results
+    
+    def _get_test_endpoints(self) -> List[Dict[str, Any]]:
+        """Get endpoints for testing"""
+        if self._baseline and self._baseline.top_endpoints:
+            return [
+                {"path": ep.path, "method": ep.method, "weight": ep.request_count}
+                for ep in self._baseline.top_endpoints
+            ]
+        elif self.config.target.endpoints:
+            return [
+                {"path": ep, "method": "GET", "weight": 1}
+                for ep in self.config.target.endpoints
+            ]
+        return [{"path": "/", "method": "GET", "weight": 1}]
     
     def _node_root_cause_analysis(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -373,3 +373,94 @@ class K6Executor:
                     print(f"    ✗ Failed: {result.raw_stderr[:100]}")
         
         return results
+    
+    def execute_adaptive(
+        self,
+        script: TestScript,
+        initial_vus: int,
+        max_vus: int,
+        step: int,
+        hold_seconds: int,
+        error_threshold: float,
+        latency_slope_threshold: float,
+        fine_step_divisor: int,
+        timeout_per_step: int = 120,
+        verbose: bool = False,
+    ) -> List[K6Result]:
+        """
+        Execute adaptive VU escalation.
+        
+        Increases VUs stepwise while:
+        - error_rate < threshold
+        - latency slope stable
+        
+        Switches to smaller increments after degradation detected.
+        """
+        results = []
+        current_vus = initial_vus
+        current_step = step
+        previous_latency = None
+        fine_mode = False
+        
+        if verbose:
+            print(f"  Adaptive mode: {initial_vus} → {max_vus} VUs (step={step})")
+        
+        iteration = 0
+        while current_vus <= max_vus:
+            iteration += 1
+            
+            # Create single-stage script for this VU level
+            adaptive_script = TestScript(
+                test_type=TestType.STRESS,
+                name=f"adaptive_step_{iteration}",
+                base_url=script.base_url,
+                endpoints=script.endpoints,
+                stages=[
+                    {"duration": f"{hold_seconds}s", "target": current_vus},
+                ],
+                thresholds=script.thresholds,
+                headers=script.headers,
+            )
+            
+            if verbose:
+                mode_str = "[fine]" if fine_mode else "[coarse]"
+                print(f"    Step {iteration}: {current_vus} VUs {mode_str}")
+            
+            # Execute this step
+            result = self.execute(adaptive_script, timeout_per_step, verbose=False)
+            result.test_type = f"adaptive_{current_vus}vus"
+            results.append(result)
+            
+            if verbose:
+                print(f"      → P95: {result.metrics.latency_p95:.0f}ms, "
+                      f"Error: {result.metrics.error_rate:.1%}, "
+                      f"RPS: {result.metrics.requests_per_second:.1f}")
+            
+            # Check error threshold
+            if result.metrics.error_rate >= error_threshold:
+                if verbose:
+                    print(f"    ✗ Error threshold breached at {current_vus} VUs")
+                break
+            
+            # Check latency slope
+            if previous_latency and previous_latency > 0:
+                latency_slope = result.metrics.latency_p95 / previous_latency
+                
+                if latency_slope >= latency_slope_threshold and not fine_mode:
+                    fine_mode = True
+                    current_step = max(1, step // fine_step_divisor)
+                    if verbose:
+                        print(f"    ⚠ Latency slope {latency_slope:.1f}x - switching to fine mode (step={current_step})")
+                
+                if fine_mode and latency_slope >= latency_slope_threshold:
+                    if verbose:
+                        print(f"    ✗ Sustained latency degradation at {current_vus} VUs")
+                    break
+            
+            previous_latency = result.metrics.latency_p95
+            current_vus += current_step
+        
+        if verbose:
+            print(f"  Adaptive complete: {len(results)} steps executed")
+        
+        return results

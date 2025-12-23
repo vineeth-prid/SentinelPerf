@@ -36,18 +36,21 @@ class TestScript:
     name: str
     base_url: str
     endpoints: List[TestEndpoint]
-    stages: List[TestStage]
+    stages: List[Any]  # Can be TestStage or dict
     thresholds: Dict[str, List[str]]
     headers: Dict[str, str] = field(default_factory=dict)
     
     def to_k6_script(self) -> str:
         """Generate deterministic k6 JavaScript test script"""
         
-        # Format stages
-        stages_js = ",\n    ".join([
-            f"{{ duration: '{s.duration}', target: {s.target} }}"
-            for s in self.stages
-        ])
+        # Format stages (handle both TestStage and dict)
+        stage_list = []
+        for s in self.stages:
+            if isinstance(s, dict):
+                stage_list.append(f"{{ duration: '{s['duration']}', target: {s['target']} }}")
+            else:
+                stage_list.append(f"{{ duration: '{s.duration}', target: {s.target} }}")
+        stages_js = ",\n    ".join(stage_list)
         
         # Format thresholds
         thresholds_js = ",\n    ".join([

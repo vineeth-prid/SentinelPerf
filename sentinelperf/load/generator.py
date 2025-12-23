@@ -12,6 +12,8 @@ class TestType(str, Enum):
     STRESS = "stress"      # Incremental load to find limits
     SPIKE = "spike"        # Sudden traffic burst
     ADAPTIVE = "adaptive"  # Adaptive VU escalation
+    SUSTAINED = "sustained"  # Long duration moderate load
+    RECOVERY = "recovery"  # Push past breaking, observe recovery
 
 
 @dataclass

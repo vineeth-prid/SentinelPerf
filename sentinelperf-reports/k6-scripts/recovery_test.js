@@ -1,7 +1,7 @@
-// SentinelPerf Generated Test: adaptive_step_4
-// Type: stress
+// SentinelPerf Generated Test: recovery_test
+// Type: recovery
 // Target: http://localhost:8765
-// Generated: 2025-12-23T10:18:55.949018Z
+// Generated: 2025-12-23T10:20:19.875552Z
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
@@ -18,11 +18,16 @@ const latencyTrend = new Trend('sentinelperf_latency');
 // Test configuration
 export const options = {
   stages: [
-    { duration: '10s', target: 17 }
+    { duration: '10s', target: 2 },
+    { duration: '5s', target: 32 },
+    { duration: '30s', target: 32 },
+    { duration: '3s', target: 1 },
+    { duration: '60s', target: 2 },
+    { duration: '5s', target: 0 }
   ],
   thresholds: {
-    'http_req_failed': ['rate<0.05'],
-    'http_req_duration': ['p(95)<200']
+    'http_req_failed': ['rate<0.8'],
+    'http_req_duration': ['p(95)<15000']
   },
   // Output JSON summary
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'],
@@ -71,8 +76,8 @@ export function handleSummary(data) {
   return {
     'stdout': JSON.stringify({
       sentinelperf_version: '1.0',
-      test_type: 'stress',
-      test_name: 'adaptive_step_4',
+      test_type: 'recovery',
+      test_name: 'recovery_test',
       timestamp: new Date().toISOString(),
       metrics: {
         http_reqs: data.metrics.http_reqs,

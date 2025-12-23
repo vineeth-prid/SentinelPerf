@@ -30,7 +30,7 @@ environments:
       error_rate_threshold: 0.05
       p95_latency_threshold_ms: 200
       adaptive_step: 5
-      adaptive_enabled: true
+      adaptive_enabled: false
       adaptive_hold_seconds: 10
       adaptive_latency_slope_threshold: 2.0
     

@@ -39,6 +39,7 @@ class MarkdownReporter:
         sections = [
             self._header(state),
             self._executive_summary(state, result),
+            self._infra_warnings_section(state),
             self._breaking_point_section(state),
             self._root_cause_section(state),
             self._recommendations_section(state),

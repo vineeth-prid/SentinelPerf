@@ -2,7 +2,7 @@
 
 **Target:** http://localhost:8765  
 **Environment:** test  
-**Generated:** 2025-12-23 07:11:03 UTC  
+**Generated:** 2025-12-23 07:11:20 UTC  
 **Status:** ⚠️ report_generation
 
 ---

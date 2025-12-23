@@ -182,6 +182,18 @@ Root cause analysis was not performed."""
         model_info = f"**Model:** {rc.llm_model}" if rc.llm_model else ""
         latency_info = f" ({rc.llm_latency_ms:.0f}ms)" if rc.llm_latency_ms > 0 else ""
         
+        # Pattern section
+        pattern_section = ""
+        if rc.failure_pattern and rc.pattern_explanation:
+            pattern_display = rc.failure_pattern.replace("_", " ").title()
+            pattern_section = f"""
+
+### Failure Pattern
+
+**Detected Pattern:** {pattern_display}
+
+{rc.pattern_explanation}"""
+        
         return f"""## Root Cause Analysis
 
 **Analysis Mode:** {rc.llm_mode}{latency_info}  
@@ -194,7 +206,7 @@ Root cause analysis was not performed."""
 
 ### Primary Cause
 
-{rc.primary_cause}
+{rc.primary_cause}{pattern_section}
 
 ### Contributing Factors
 

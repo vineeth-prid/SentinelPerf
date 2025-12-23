@@ -708,6 +708,11 @@ class SentinelPerfAgent:
         bp_result,
     ) -> None:
         """Run optional destructive test scenarios"""
+        if not self.k6_executor.check_available():
+            if self.verbose:
+                print("  ⚠ k6 not available - skipping destructive tests")
+            return
+        
         if self.verbose:
             print("  Running destructive tests...")
         

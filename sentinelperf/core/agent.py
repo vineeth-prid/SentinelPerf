@@ -786,6 +786,10 @@ class SentinelPerfAgent:
             )
             
             for k6_result in recovery_results:
+                if not k6_result.success:
+                    if self.verbose:
+                        print(f"      ⚠ Recovery test failed: {k6_result.raw_stderr[:100] if k6_result.raw_stderr else 'unknown error'}")
+                    continue
                 load_result = LoadTestResult(
                     test_type=k6_result.test_type,
                     vus=k6_result.metrics.vus_max,

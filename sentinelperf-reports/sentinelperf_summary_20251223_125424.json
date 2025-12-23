@@ -1,0 +1,167 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-12-23T12:54:24.686186",
+  "status": "success",
+  "target": {
+    "url": "http://localhost:8765",
+    "environment": "test"
+  },
+  "execution": {
+    "started_at": "2025-12-23T12:54:24.566031",
+    "completed_at": null,
+    "duration_seconds": null,
+    "phase": "report_generation",
+    "errors": [
+      "No telemetry source configured or enabled"
+    ]
+  },
+  "telemetry": {
+    "available": false
+  },
+  "breaking_point": {
+    "detected": false,
+    "classification": "no_failure",
+    "message": "No breaking point detected within tested parameters",
+    "timeline": [
+      {
+        "timestamp": "t0",
+        "event_type": "load_change",
+        "description": "Load increased to 2 VUs (baseline)",
+        "test_type": "baseline",
+        "vus": 2,
+        "metrics": {
+          "rps": 20
+        }
+      },
+      {
+        "timestamp": "t1",
+        "event_type": "load_change",
+        "description": "Load increased to 30 VUs (stress)",
+        "test_type": "stress",
+        "vus": 30,
+        "metrics": {
+          "rps": 300
+        }
+      }
+    ]
+  },
+  "root_cause": {
+    "analyzed": true,
+    "root_cause_summary": "No breaking point detected within test parameters",
+    "primary_cause": "System capacity exceeds tested load levels",
+    "contributing_factors": [],
+    "confidence": 0.7,
+    "assumptions": [
+      "Load tests accurately simulate production traffic patterns",
+      "Telemetry data reflects actual system behavior"
+    ],
+    "limitations": [
+      "Analysis based on rules-only (LLM unavailable)",
+      "Low baseline confidence - limited historical data",
+      "Limited timeline events for detailed analysis"
+    ],
+    "failure_pattern": "no_violations",
+    "pattern_explanation": "No threshold violations detected during testing",
+    "llm_mode": "rules",
+    "llm_model": "",
+    "llm_latency_ms": 0.0
+  },
+  "recommendations": {
+    "recommendations": [
+      {
+        "action": "Increase load test intensity to find actual limits",
+        "rationale": "No breaking point found within test parameters",
+        "expected_impact": "Establish true capacity ceiling",
+        "risk": "LOW",
+        "confidence": 0.7699999999999999,
+        "priority": 1
+      },
+      {
+        "action": "Document current capacity as baseline",
+        "rationale": "System handled all test scenarios successfully",
+        "expected_impact": "Reference point for future capacity planning",
+        "risk": "LOW",
+        "confidence": 0.84,
+        "priority": 2
+      }
+    ],
+    "limitations": [
+      "Recommendations are guidance, not prescriptions",
+      "Actual fixes require system-specific investigation",
+      "No failure detected - recommendations are exploratory"
+    ],
+    "polished_by_llm": false,
+    "llm_model": "",
+    "llm_latency_ms": 0.0
+  },
+  "load_tests": [
+    {
+      "test_type": "baseline",
+      "vus": 2,
+      "duration": "30s",
+      "total_requests": 200,
+      "successful_requests": 190,
+      "failed_requests": 10,
+      "error_rate": 0.05,
+      "latency": {
+        "p50_ms": 50,
+        "p95_ms": 200,
+        "p99_ms": 500
+      },
+      "throughput_rps": 20,
+      "timestamp": "2025-12-23T12:54:24.569549"
+    },
+    {
+      "test_type": "stress",
+      "vus": 30,
+      "duration": "30s",
+      "total_requests": 3000,
+      "successful_requests": 2850,
+      "failed_requests": 150,
+      "error_rate": 0.05,
+      "latency": {
+        "p50_ms": 50,
+        "p95_ms": 200,
+        "p99_ms": 500
+      },
+      "throughput_rps": 300,
+      "timestamp": "2025-12-23T12:54:24.569552"
+    },
+    {
+      "test_type": "spike",
+      "vus": 30,
+      "duration": "30s",
+      "total_requests": 3000,
+      "successful_requests": 2850,
+      "failed_requests": 150,
+      "error_rate": 0.05,
+      "latency": {
+        "p50_ms": 50,
+        "p95_ms": 200,
+        "p99_ms": 500
+      },
+      "throughput_rps": 300,
+      "timestamp": "2025-12-23T12:54:24.569554"
+    }
+  ],
+  "test_coverage": {
+    "max_vus_reached": 30,
+    "max_sustained_rps": 300,
+    "total_requests_executed": 6200,
+    "longest_load_duration_seconds": 30,
+    "spike_severity": "mild",
+    "recovery_observed": false
+  },
+  "infra_saturation": {
+    "warnings": [],
+    "saturated": false
+  },
+  "ci_cd": {
+    "exit_code": 0,
+    "thresholds_passed": true,
+    "summary": "PASS: No breaking point detected for http://localhost:8765",
+    "breaking_point_vus": null,
+    "root_cause_confidence": 0.7,
+    "recommendation_count": 2
+  }
+}

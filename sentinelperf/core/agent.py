@@ -799,6 +799,8 @@ class SentinelPerfAgent:
             confidence=llm_output.confidence,
             assumptions=llm_output.assumptions,
             limitations=llm_output.limitations,
+            failure_pattern=llm_output.failure_pattern,
+            pattern_explanation=llm_output.pattern_explanation,
             llm_mode=mode,
             llm_model=model,
             llm_latency_ms=latency_ms,
@@ -807,6 +809,7 @@ class SentinelPerfAgent:
         if self.verbose:
             print(f"  Mode: {mode}" + (f" ({model})" if model else ""))
             print(f"  Primary cause: {llm_output.primary_cause}")
+            print(f"  Pattern: {llm_output.failure_pattern}")
             print(f"  Confidence: {llm_output.confidence:.0%}")
             if llm_output.limitations:
                 print(f"  Limitations: {len(llm_output.limitations)}")

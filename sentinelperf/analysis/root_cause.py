@@ -339,6 +339,11 @@ Provide your analysis as JSON following the required output format."""
         
         confidence = min(confidence, 0.85)  # Cap rules-based confidence
         
+        # Detect failure pattern and get explanation
+        pattern, pattern_explanation = self._detect_failure_pattern(
+            timeline, breaking_point, input_contract.observed_metrics
+        )
+        
         return LLMOutputContract(
             root_cause_summary=root_cause_summary,
             primary_cause=primary_cause,
@@ -346,7 +351,164 @@ Provide your analysis as JSON following the required output format."""
             confidence=confidence,
             assumptions=assumptions,
             limitations=limitations,
+            failure_pattern=pattern,
+            pattern_explanation=pattern_explanation,
         )
+    
+    def _detect_failure_pattern(
+        self,
+        timeline: List[Dict[str, Any]],
+        breaking_point: Optional[Dict[str, Any]],
+        observed_metrics: Dict[str, Any],
+    ) -> tuple[str, str]:
+        """
+        Detect failure pattern from timeline and metrics.
+        
+        Patterns:
+        - errors_before_latency: Errors appeared before latency degradation
+        - latency_before_errors: Latency degraded before errors appeared
+        - throughput_plateau: Throughput stopped scaling before other issues
+        - spike_only_failure: System stable under gradual load, failed only on spike
+        - no_recovery_after_drop: System did not recover after load decreased
+        
+        Returns:
+            Tuple of (pattern_name, explanation)
+        """
+        if not timeline:
+            return "insufficient_data", "Not enough timeline data to detect pattern"
+        
+        # Extract violation events (non-load-change)
+        violations = [e for e in timeline if e.get("event_type") != "load_change"]
+        
+        if not violations:
+            return "no_violations", "No threshold violations detected during testing"
+        
+        # Get first occurrences of each violation type
+        first_error = None
+        first_latency = None
+        first_throughput = None
+        first_saturation = None
+        
+        for i, v in enumerate(violations):
+            vtype = v.get("event_type", "")
+            if vtype == "error_rate_breach" and first_error is None:
+                first_error = i
+            elif vtype == "latency_degradation" and first_latency is None:
+                first_latency = i
+            elif vtype == "throughput_plateau" and first_throughput is None:
+                first_throughput = i
+            elif vtype == "saturation" and first_saturation is None:
+                first_saturation = i
+        
+        # Check for spike-only failure
+        test_types = set(e.get("test_type", "") for e in violations)
+        if test_types == {"spike"} or all("spike" in t.lower() for t in test_types if t):
+            return (
+                "spike_only_failure",
+                "System handled gradual load increases but failed under sudden traffic burst. "
+                "Likely causes: connection pool exhaustion, cold cache, thread starvation, "
+                "or lack of backpressure mechanisms. The system needs burst capacity buffers."
+            )
+        
+        # Check for no recovery after load drop
+        recovery_detected = self._check_recovery(timeline, observed_metrics)
+        if not recovery_detected and len(violations) >= 2:
+            # Check if there was a load drop after violations
+            load_events = [e for e in timeline if e.get("event_type") == "load_change"]
+            if len(load_events) >= 2:
+                last_vus = [e.get("vus", 0) for e in load_events]
+                if len(last_vus) >= 2 and last_vus[-1] < max(last_vus):
+                    return (
+                        "no_recovery_after_drop",
+                        "System did not recover after load decreased. "
+                        "Likely causes: resource leaks, stuck connections, thread deadlocks, "
+                        "or cascading failure state. Requires investigation of cleanup mechanisms."
+                    )
+        
+        # Check for throughput plateau first
+        if first_throughput is not None:
+            if first_error is None or first_throughput < first_error:
+                if first_latency is None or first_throughput < first_latency:
+                    return (
+                        "throughput_plateau",
+                        "Throughput stopped scaling before errors or latency issues appeared. "
+                        "Likely causes: external bottleneck (database, downstream service), "
+                        "connection pool limits, or I/O saturation. Check dependency health."
+                    )
+        
+        # Check errors before latency
+        if first_error is not None and first_latency is not None:
+            if first_error < first_latency:
+                return (
+                    "errors_before_latency",
+                    "Errors appeared before significant latency degradation. "
+                    "Likely causes: hard resource limits (memory OOM, file descriptors), "
+                    "explicit rate limiting, or downstream service failures. "
+                    "The system is failing fast rather than degrading gracefully."
+                )
+        
+        # Check latency before errors
+        if first_latency is not None and first_error is not None:
+            if first_latency < first_error:
+                return (
+                    "latency_before_errors",
+                    "Latency degraded significantly before errors appeared. "
+                    "Likely causes: request queuing at a bottleneck, database contention, "
+                    "lock contention, or garbage collection pressure. "
+                    "The system queued requests until timeouts caused errors."
+                )
+        
+        # Latency only (no errors)
+        if first_latency is not None and first_error is None:
+            return (
+                "latency_amplification_only",
+                "Only latency degradation observed without error threshold breach. "
+                "Likely causes: gradual resource contention, inefficient algorithms "
+                "under load, or cache misses. System remained functional but slow."
+            )
+        
+        # Errors only (no latency degradation)
+        if first_error is not None and first_latency is None:
+            return (
+                "errors_without_latency",
+                "Errors occurred without prior latency degradation. "
+                "Likely causes: hard limits being hit (connection refused, OOM killer), "
+                "circuit breakers tripping, or external service failures."
+            )
+        
+        # Saturation pattern
+        if first_saturation is not None:
+            return (
+                "resource_saturation",
+                "Resource saturation detected during load increase. "
+                "Likely causes: CPU saturation, memory pressure, or I/O bottleneck. "
+                "Consider scaling resources or optimizing hot paths."
+            )
+        
+        return "mixed_failure", "Multiple failure modes detected simultaneously"
+    
+    def _check_recovery(
+        self,
+        timeline: List[Dict[str, Any]],
+        observed_metrics: Dict[str, Any],
+    ) -> bool:
+        """Check if system showed recovery after load drop"""
+        # Look for pattern: high errors followed by low errors
+        error_events = [
+            e for e in timeline 
+            if e.get("event_type") == "error_rate_breach"
+        ]
+        
+        if len(error_events) < 2:
+            return True  # Not enough data to determine
+        
+        # Check test types for recovery pattern
+        test_types = observed_metrics.get("test_types", [])
+        if "spike" in test_types or "stress" in test_types:
+            # If we have multiple test types, assume some recovery opportunity
+            return True
+        
+        return False
 
 
 def run_root_cause_analysis(

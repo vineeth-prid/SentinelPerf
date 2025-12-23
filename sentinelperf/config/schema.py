@@ -68,6 +68,12 @@ class LoadConfig(BaseModel):
     adaptive_hold_seconds: int = Field(default=15, ge=5, description="Hold duration per step in adaptive mode")
     adaptive_latency_slope_threshold: float = Field(default=2.0, ge=1.0, description="Max latency slope before switching to fine mode")
     adaptive_fine_step_divisor: int = Field(default=4, ge=2, description="Divisor for fine step after degradation")
+    
+    # Destructive test settings (OFF by default)
+    destructive_enabled: bool = Field(default=False, description="Enable destructive test scenarios")
+    sustained_test_vus: int = Field(default=0, ge=0, description="VUs for sustained test (0 = auto from baseline)")
+    sustained_test_duration: str = Field(default="5m", description="Duration for sustained load test")
+    recovery_test_enabled: bool = Field(default=False, description="Enable recovery test after breaking point")
 
 
 class LLMConfig(BaseModel):

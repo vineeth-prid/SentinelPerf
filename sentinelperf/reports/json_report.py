@@ -268,7 +268,7 @@ class JSONReporter:
         }
     
     def _api_trigger_summary(self, state: AgentState) -> Dict[str, Any]:
-        """API & Backend Trigger Summary - describes which APIs were tested"""
+        """API & Backend Trigger Summary - ALWAYS rendered, describes which APIs were tested"""
         # Check if we have API-level telemetry
         has_api_telemetry = bool(
             state.telemetry_insights and 
@@ -276,7 +276,7 @@ class JSONReporter:
             len(state.telemetry_insights.endpoints) > 0
         )
         
-        # Get endpoints
+        # Get endpoints from telemetry, generated tests, or config
         endpoints = []
         if has_api_telemetry:
             for ep in state.telemetry_insights.endpoints[:10]:
@@ -294,8 +294,9 @@ class JSONReporter:
                         if path not in endpoints:
                             endpoints.append(path)
         
+        # Use target URL as fallback
         if not endpoints:
-            endpoints = [state.target_url or "/ (default)"]
+            endpoints = [state.target_url or "/ (default target)"]
         
         # Test phases
         test_phases = set()
@@ -304,33 +305,35 @@ class JSONReporter:
                 phase = r.test_type.split("_")[0].lower()
                 test_phases.add(phase)
         
-        # Observed effect
-        overall_effect = "none"
-        if state.breaking_point and state.breaking_point.vus_at_break > 0:
+        # Observed effect with explicit values
+        if not state.load_results:
+            overall_effect = "not_tested"
+        elif state.breaking_point and state.breaking_point.vus_at_break > 0:
             if state.breaking_point.failure_type == "error_rate_breach":
                 overall_effect = "errors_increased"
             elif state.breaking_point.failure_type == "latency_degradation":
                 overall_effect = "latency_increased"
             else:
                 overall_effect = "degradation_observed"
-        elif state.failure_category == "no_failure":
-            overall_effect = "none"
+        else:
+            overall_effect = "no_degradation_detected"
         
         # Max VUs
         max_vus = max((r.vus for r in state.load_results), default=0) if state.load_results else 0
         
-        # APIs exercised
+        # APIs exercised - always populated
         apis_exercised = []
         for endpoint in endpoints[:5]:
             apis_exercised.append({
                 "endpoint": endpoint,
-                "test_phases": sorted(list(test_phases)),
+                "test_phases": sorted(list(test_phases)) if test_phases else ["not_executed"],
                 "max_vus_applied": max_vus,
                 "observed_effect": overall_effect,
             })
         
         # APIs contributing to instability
         instability_apis = []
+        instability_note = None
         if state.breaking_point and state.breaking_point.signals:
             for signal in state.breaking_point.signals:
                 if "/" in signal:
@@ -338,6 +341,21 @@ class JSONReporter:
                         "signal": signal,
                         "failure_type": state.breaking_point.failure_type,
                     })
+        
+        if not instability_apis:
+            if not state.breaking_point or state.breaking_point.vus_at_break == 0:
+                instability_note = "No instability detected during testing"
+            else:
+                instability_note = "No single API endpoint dominated failure behavior"
+        
+        return {
+            "api_telemetry_available": has_api_telemetry,
+            "note": "API-level telemetry available from application instrumentation" if has_api_telemetry else "API-level telemetry not available; summary inferred from load execution",
+            "apis_exercised": apis_exercised,
+            "apis_contributing_to_instability": instability_apis,
+            "instability_note": instability_note,
+            "total_endpoints_tested": len(endpoints),
+        }
         
         return {
             "api_telemetry_available": has_api_telemetry,

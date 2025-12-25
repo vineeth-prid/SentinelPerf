@@ -46,21 +46,23 @@ class MarkdownReporter:
         
         # Report order per spec:
         # 1. Executive Summary
-        # 2. Test Case Summary ← new
-        # 3. Test Case Coverage Summary ← fixed
-        # 4. API & Backend Trigger Summary ← new
-        # 5. Breaking Point Analysis
-        # 6. Failure Timeline (included in breaking_point_section)
-        # 7. Root Cause Analysis
-        # 8. Recommendations
-        # 9. Load Test Results
-        # 10. Infrastructure Saturation (if exists)
-        # 11. Telemetry Analysis
-        # 12. Methodology
-        # 13. Appendix
+        # 2. Execution Proof ← NEW (mandatory)
+        # 3. Test Case Summary
+        # 4. Test Case Coverage Summary
+        # 5. API & Backend Trigger Summary
+        # 6. Breaking Point Analysis
+        # 7. Failure Timeline (included in breaking_point_section)
+        # 8. Root Cause Analysis
+        # 9. Recommendations
+        # 10. Load Test Results
+        # 11. Infrastructure Saturation (if exists)
+        # 12. Telemetry Analysis
+        # 13. Methodology
+        # 14. Appendix
         sections = [
             self._header(state),
             self._executive_summary(state, result),
+            self._execution_proof_section(state),
             self._test_case_summary_section(state),
             self._test_case_coverage_summary_section(state),
             self._api_trigger_summary_section(state),
@@ -77,15 +79,42 @@ class MarkdownReporter:
         return "\n\n".join(filter(None, sections))
     
     def _header(self, state: AgentState) -> str:
-        """Report header"""
+        """Report header with execution timestamps"""
+        started = state.started_at.strftime("%Y-%m-%d %H:%M:%S UTC") if state.started_at else "N/A"
+        completed = state.completed_at.strftime("%Y-%m-%d %H:%M:%S UTC") if state.completed_at else "N/A"
+        
         return f"""# SentinelPerf Analysis Report
 
 **Target:** {state.target_url}  
 **Environment:** {state.environment}  
-**Generated:** {datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")}  
+**Execution ID:** `{state.execution_id or 'N/A'}`  
+**Started:** {started}  
+**Completed:** {completed}  
 **Status:** {'✅ Complete' if state.phase.value == 'complete' else '⚠️ ' + state.phase.value}
 
 ---"""
+    
+    def _execution_proof_section(self, state: AgentState) -> str:
+        """Execution Proof section - proves this report is from a real execution"""
+        started = state.started_at.isoformat() if state.started_at else "N/A"
+        completed = state.completed_at.isoformat() if state.completed_at else "N/A"
+        
+        # Calculate actual max VUs from load results
+        actual_max_vus = state.achieved_max_vus
+        if actual_max_vus == 0 and state.load_results:
+            actual_max_vus = max((r.vus for r in state.load_results), default=0)
+        
+        return f"""## Execution Proof
+
+| Property | Value |
+|----------|-------|
+| Execution ID | `{state.execution_id or 'N/A'}` |
+| Started At | {started} |
+| Completed At | {completed} |
+| Config File | `{state.config_file_path or 'N/A'}` |
+| Environment | {state.environment} |
+| Max VUs ACTUALLY EXECUTED | **{actual_max_vus}** |
+| Autoscaling Enabled | {state.autoscaling_enabled} |"""
 
     def _executive_summary(self, state: AgentState, result: ExecutionResult) -> str:
         """Executive summary section with load execution transparency"""

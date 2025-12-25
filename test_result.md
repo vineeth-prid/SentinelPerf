@@ -5,59 +5,70 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 
 ## Test Status: ✅ ALL PASSED
 
-### E2E Scenarios Validated
+### Execution Integrity Implementation (2024-12-25) ✅
 
-| Scenario | Classification | BP Confidence | RC Confidence | Rec Confidence | Status |
-|----------|---------------|---------------|---------------|----------------|--------|
-| Degraded Baseline | `already_degraded_baseline` | 85% | 85% | 88% | ✅ |
-| Error Driven Collapse | `error_driven_collapse` | 85% | 85% | 85% | ✅ |
-| Stress Test | `error_driven_collapse` | 85% | 85% | 85% | ✅ |
+**1. Execution ID:**
+- Generated UUID at CLI start (`sentinelperf run`)
+- Stored in `AgentState.execution_id`
+- Propagated to: Markdown report, JSON summary, Console output
 
-**Confidence Consistency**: All scenarios show proper confidence flow from BP → RC → Recommendations
+**2. Execution Timestamps:**
+- `started_at`: Captured at CLI start (UTC, ISO8601)
+- `completed_at`: Captured after report generation (UTC, ISO8601)
+- REAL runtime timestamps, not reused values
 
-### Auto-Scaling Load Execution (2024-12-25) ✅
+**3. Report Naming Guarantee:**
+- Filename format: `sentinelperf_report_{timestamp}_{exec_id_short}.md`
+- Example: `sentinelperf_report_20251225_101751_d50cf49c.md`
+- Timestamp from execution start, not report generation time
+- Execution ID prefix (8 chars) for uniqueness
 
-**PART 1 - Load Execution Fixed:**
-- New `AutoScaleConfig` class for staged ramp configuration
-- New `generate_autoscale_test()` method with proper k6 stages
-- New `generate_stress_test_staged()` for stress tests with staged ramp
-- k6 stages generated dynamically: initial → step → step → ... → max → ramp down
-- `TestScript` now tracks `configured_max_vus` and `stage_vus_list`
+**4. Fail-Loud Behavior:**
+- `report_generated` flag in state, only set after successful generation
+- CLI checks flag and prints RED error: "NO REPORT GENERATED – execution aborted before completion"
+- Non-zero exit code on failure
 
-**PART 2 - Reporting Transparency:**
-- `AgentState` now tracks:
-  - `configured_max_vus`: What was configured
-  - `achieved_max_vus`: Highest VUs actually executed
-  - `early_stop_reason`: Why execution stopped (if early)
-  - `planned_vus_stages` / `executed_vus_stages`: Full audit trail
+**5. Execution Proof Block (NEW SECTION):**
 
-**Executive Summary now shows:**
+Markdown:
 ```
-**Load Execution:** Scaled to **250 VUs** of 1000 configured — breaking point detected
-```
-
-**Test Case Summary now shows:**
-```
-### Load Execution Summary
-- Configured Max VUs: 1000
-- Achieved Max VUs: 250
-- Early Stop Reason: Breaking point detected at 250 VUs
-- Planned Stages: 10, 100, 200, ... VUs
-- Executed Stages: 10, 100, 200, 250 VUs
+## Execution Proof
+| Property | Value |
+|----------|-------|
+| Execution ID | `d50cf49c-...` |
+| Started At | 2025-12-25T10:17:51+00:00 |
+| Completed At | 2025-12-25T10:18:05+00:00 |
+| Config File | `/path/to/sentinelperf.yaml` |
+| Environment | test |
+| Max VUs ACTUALLY EXECUTED | **250** |
+| Autoscaling Enabled | True |
 ```
 
-**JSON Report includes:**
-- `load_execution.configured_max_vus`
-- `load_execution.achieved_max_vus`
-- `load_execution.full_range_executed` (boolean)
-- `load_execution.early_stop_reason`
-- `load_execution.planned_vus_stages` / `executed_vus_stages`
+JSON:
+```json
+"execution_proof": {
+  "execution_id": "d50cf49c-...",
+  "started_at": "2025-12-25T10:17:51+00:00",
+  "completed_at": "2025-12-25T10:18:05+00:00",
+  "config": "/path/to/sentinelperf.yaml",
+  "environment": "test",
+  "max_vus_executed": 250,
+  "autoscaling_enabled": true
+}
+```
+
+**6. Max VU Truth:**
+- `achieved_max_vus` calculated from actual load results
+- Executive Summary shows ACTUAL max VUs only
+- Console output displays actual max when no breaking point
 
 ### Files Modified
-- `/app/sentinelperf/load/generator.py` - AutoScaleConfig, generate_autoscale_test, generate_stress_test_staged
-- `/app/sentinelperf/core/state.py` - Added VU tracking fields
-- `/app/sentinelperf/reports/markdown.py` - Executive Summary & Test Case Summary transparency
-- `/app/sentinelperf/reports/json_report.py` - load_execution section
+- `/app/sentinelperf/cli.py` - UUID generation, fail-loud behavior
+- `/app/sentinelperf/core/state.py` - Added execution_id, config_file_path, autoscaling_enabled, report_generated
+- `/app/sentinelperf/core/agent.py` - Execution context, report_generated flag
+- `/app/sentinelperf/reports/markdown.py` - Execution Proof section, timestamped filenames
+- `/app/sentinelperf/reports/json_report.py` - execution_proof object, timestamped filenames
+- `/app/sentinelperf/reports/console.py` - Execution ID in output
 
 ### Test Commands
 ```bash

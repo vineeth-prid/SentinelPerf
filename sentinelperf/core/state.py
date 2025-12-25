@@ -133,6 +133,13 @@ class AgentState:
     # Load test execution results
     load_results: List[LoadTestResult] = field(default_factory=list)
     
+    # Load execution tracking (configured vs achieved)
+    configured_max_vus: int = 0  # What was configured in config
+    achieved_max_vus: int = 0    # Highest VUs actually executed
+    early_stop_reason: Optional[str] = None  # Why we stopped before max
+    planned_vus_stages: List[int] = field(default_factory=list)  # Planned VU levels
+    executed_vus_stages: List[int] = field(default_factory=list)  # Actually executed
+    
     # Breaking point analysis
     breaking_point: Optional[BreakingPoint] = None
     failure_timeline: List[Dict[str, Any]] = field(default_factory=list)

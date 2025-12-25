@@ -13,12 +13,12 @@ RESET = "\033[0m"
 BOLD = "\033[1m"
 
 
-def format_console_output(result: ExecutionResult) -> str:
+def format_console_output(result: ExecutionResult, execution_id: str = "") -> str:
     """
     Format execution result for console output.
     
     Returns max 5 lines as per requirements:
-    1. Status line (pass/fail with target)
+    1. Status line (pass/fail with target + execution ID)
     2. Breaking point info (if detected)
     3. Root cause with confidence
     4. Warnings count (if any)
@@ -27,22 +27,32 @@ def format_console_output(result: ExecutionResult) -> str:
     lines = []
     state = result.state
     
-    # Line 1: Status with clear pass/fail indication
+    # Use execution_id from param or state
+    exec_id = execution_id or state.execution_id or ""
+    exec_id_short = exec_id[:8] if exec_id else "unknown"
+    
+    # Line 1: Status with clear pass/fail indication + execution ID
     if result.success:
         if state.breaking_point and state.breaking_point.vus_at_break > 0:
-            lines.append(f"{YELLOW}⚠{RESET} SentinelPerf analysis complete: {state.target_url}")
+            lines.append(f"{YELLOW}⚠{RESET} SentinelPerf [{exec_id_short}] complete: {state.target_url}")
         else:
-            lines.append(f"{GREEN}✓{RESET} SentinelPerf analysis complete: {state.target_url}")
+            lines.append(f"{GREEN}✓{RESET} SentinelPerf [{exec_id_short}] complete: {state.target_url}")
     else:
-        lines.append(f"{RED}✗{RESET} SentinelPerf analysis failed: {state.target_url}")
+        lines.append(f"{RED}✗{RESET} SentinelPerf [{exec_id_short}] failed: {state.target_url}")
     
-    # Line 2: Breaking point (if detected)
+    # Line 2: Breaking point (if detected) with ACTUAL max VUs
+    actual_max_vus = state.achieved_max_vus
+    if actual_max_vus == 0 and state.load_results:
+        actual_max_vus = max((r.vus for r in state.load_results), default=0)
+    
     if state.breaking_point and state.breaking_point.vus_at_break > 0:
         bp = state.breaking_point
         lines.append(
             f"  Breaking point: {bp.vus_at_break} VUs @ {bp.rps_at_break:.1f} RPS "
             f"({bp.failure_type})"
         )
+    elif actual_max_vus > 0:
+        lines.append(f"  Max VUs executed: {actual_max_vus} (no breaking point detected)")
     
     # Line 3: Root cause with confidence bar
     if state.root_cause and state.root_cause.primary_cause:

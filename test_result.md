@@ -19,9 +19,9 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 
 **Section Order (VERIFIED):**
 1. Executive Summary
-2. Test Case Summary ← NEW
-3. Test Case Coverage Summary ← FIXED  
-4. API & Backend Trigger Summary ← NEW
+2. Test Case Summary ← ALWAYS RENDERED
+3. Test Case Coverage Summary ← ALWAYS RENDERED
+4. API & Backend Trigger Summary ← ALWAYS RENDERED
 5. Breaking Point Analysis
 6. Failure Timeline (within Breaking Point)
 7. Root Cause Analysis
@@ -32,27 +32,25 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 12. Methodology
 13. Appendix
 
-**New Sections Implemented:**
-- ✅ **Test Case Summary**: Test type, purpose, load pattern, max VUs, duration
-- ✅ **Test Case Coverage Summary**: Load pattern/failure mode/observability coverage (renders existing data only)
+**Sections ALWAYS Rendered (even with empty data):**
+- ✅ **Test Case Summary**: Shows test type, purpose, load pattern, max VUs, duration
+  - Empty state: `*None* | *No tests executed* | *N/A* | *N/A* | *N/A*`
+- ✅ **Test Case Coverage Summary**: Load pattern/failure mode/observability coverage
+  - Empty state: All patterns show "Not executed", failure modes show "Not observed"
 - ✅ **API & Backend Trigger Summary**: APIs exercised, test phases, observed effects
-  - Shows fallback message when API-level telemetry not available
-- ✅ **Infrastructure Saturation**: Pre/post CPU/memory, warnings, confidence penalty (only if data exists)
+  - Empty state: `*Not executed* | *N/A* | *Not tested*`
+  - Shows `"API-level telemetry not available; summary inferred from load execution"`
+  - Instability section shows explicit messages like "No instability detected during testing"
 
-**JSON Report Updated:**
-- ✅ `test_case_summary` object
-- ✅ `test_case_coverage_summary` object  
-- ✅ `api_trigger_summary` object with `api_telemetry_available` flag and `note` field
-
-### CLI UX Polish
-- ✅ Clear error messages with color coding
-- ✅ Better warnings display
-- ✅ Cleaner console summary (max 5 lines)
-- ✅ Warning icon (⚠) when breaking point detected
+**JSON Report Explicit Values:**
+- `test_case_summary.note`: "No test cases were executed" (when empty)
+- `api_trigger_summary.observed_effect`: "not_tested" / "no_degradation_detected" / "errors_increased"
+- `api_trigger_summary.test_phases`: ["not_executed"] when no tests run
+- `api_trigger_summary.instability_note`: Explicit message when no instability APIs
 
 ### Files Modified
-- `/app/sentinelperf/reports/markdown.py` - Report order, 4 sections added/fixed
-- `/app/sentinelperf/reports/json_report.py` - 3 new JSON objects with fallback handling
+- `/app/sentinelperf/reports/markdown.py` - Sections always render with fallbacks
+- `/app/sentinelperf/reports/json_report.py` - Sections always render with explicit notes
 
 ### Test Commands
 ```bash

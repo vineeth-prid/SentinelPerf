@@ -91,7 +91,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     
     if not config_path.exists():
         print(f"{RED}Error:{RESET} Configuration file not found: {config_path}", file=sys.stderr)
-        print(f"  Create a sentinelperf.yaml file or specify path with --config", file=sys.stderr)
+        print("  Create a sentinelperf.yaml file or specify path with --config", file=sys.stderr)
         print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
         return 1
     
@@ -149,7 +149,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         errors = validate_config_file(config_path)
         
         if errors:
-            print(f"\033[91mConfiguration validation failed:\033[0m")
+            print("\033[91mConfiguration validation failed:\033[0m")
             for error in errors:
                 print(f"  • {error}")
             return 1

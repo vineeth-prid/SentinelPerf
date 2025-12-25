@@ -3,7 +3,7 @@
 import asyncio
 from pathlib import Path
 from typing import Dict, Any, Literal, Optional, List, TypedDict
-from datetime import datetime
+from datetime import datetime, timezone
 
 from langgraph.graph import StateGraph, END
 
@@ -47,6 +47,10 @@ class GraphState(TypedDict, total=False):
     errors: List[str]
     started_at: str
     completed_at: Optional[str]
+    # Execution identity
+    execution_id: str
+    config_file_path: str
+    autoscaling_enabled: bool
 
 
 class SentinelPerfAgent:
@@ -68,12 +72,20 @@ class SentinelPerfAgent:
         config: SentinelPerfConfig,
         llm_mode: Literal["ollama", "rules", "mock"] = "ollama",
         output_dir: Path = Path("./sentinelperf-reports"),
-        verbose: bool = False
+        verbose: bool = False,
+        execution_id: str = "",
+        execution_started_at: datetime = None,
+        config_file_path: str = "",
     ):
         self.config = config
         self.llm_mode = llm_mode
         self.output_dir = output_dir
         self.verbose = verbose
+        
+        # Execution identity
+        self.execution_id = execution_id
+        self.execution_started_at = execution_started_at or datetime.now(timezone.utc)
+        self.config_file_path = config_file_path
         
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)

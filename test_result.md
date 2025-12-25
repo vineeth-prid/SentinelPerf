@@ -27,36 +27,48 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 7. Root Cause Analysis ← EVIDENCE-DRIVEN
 8. Recommendations
 9. Load Test Results
-10. Infrastructure Saturation ← CONDITIONAL
+10. Infrastructure Metrics ← ALWAYS RENDERED (enhanced)
 11. Telemetry Analysis
 12. Methodology
 13. Appendix
 
-### Root Cause Analysis Refactored (2024-12-25) ✅
+### Infrastructure Metrics Enhanced (2024-12-25) ✅
 
-**Evidence-Driven Analysis (No Failure Case):**
-- Uses observed metrics: error rate, latency, throughput, infra signals
-- Example summary: "No breaking point detected. Error rate remained at 2.00% (below failure threshold). P95 latency peaked at 120ms (within acceptable range)."
-- Example explanation: "System remained stable because error rate stayed low, latency responsive, throughput scaled to 45 RPS"
+**New Timeline-Based Reporting:**
+- Captures metrics at key execution points:
+  - `pre_baseline`: Before any load
+  - `peak_stress`: At maximum stress VUs
+  - `peak_spike`: At maximum spike VUs  
+  - `end_of_test`: After all tests complete
 
-**Renamed Headings (No Failure):**
-- "Primary Cause" → "System Behavior Explanation"
-- "Contributing Factors" → "Observations"  
-- "Failure Pattern" → "Observed Behavior"
+**Markdown Table Format:**
+```
+| Load Phase | VUs | CPU% | Memory% | Notes |
+|------------|-----|------|---------|-------|
+| Pre Baseline | 0 | 15.0% | 45.0% | Normal |
+| Peak Stress | 20 | 55.0% | 62.0% | Elevated CPU |
+| Peak Spike | 50 | 88.0% | 78.0% | ⚠️ Resource saturation |
+| End Of Test | 0 | 25.0% | 50.0% | Normal |
+```
 
-**Failure Case Unchanged:**
-- Still uses "Primary Cause", "Contributing Factors", "Failure Pattern"
+**Always Rendered:**
+- If no data: "Infrastructure metrics not captured during this test run"
+- Legacy format (pre_test/post_test) automatically converted
 
-**JSON Report Updated:**
-- `is_failure`: Boolean flag
-- `system_behavior_explanation`: Used when no failure (primary_cause is null)
-- `observations`: Used when no failure (contributing_factors is null)
-- `observed_behavior`: Used when no failure (failure_pattern is null)
+**JSON Structure:**
+```json
+{
+  "data_available": true,
+  "snapshots": [{"phase": "...", "vus": 0, "cpu_percent": 15.0, ...}],
+  "warnings": [],
+  "confidence_penalty": 0.15
+}
+```
 
 ### Files Modified
-- `/app/sentinelperf/analysis/root_cause.py` - Evidence-driven no-failure analysis
-- `/app/sentinelperf/reports/markdown.py` - Dynamic headings based on failure status
-- `/app/sentinelperf/reports/json_report.py` - Conditional field population
+- `/app/sentinelperf/telemetry/infra_monitor.py` - Added InfraTimeline, InfraSnapshot classes
+- `/app/sentinelperf/reports/markdown.py` - Timeline table rendering
+- `/app/sentinelperf/reports/json_report.py` - New infrastructure_metrics section
 
 ### Test Commands
 ```bash

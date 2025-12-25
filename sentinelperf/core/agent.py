@@ -148,12 +148,22 @@ class SentinelPerfAgent:
             "breaking_point": None,
             "root_cause": None,
             "errors": [],
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": self.execution_started_at.isoformat(),
             "completed_at": None,
+            # Execution identity
+            "execution_id": self.execution_id,
+            "config_file_path": self.config_file_path,
+            "autoscaling_enabled": getattr(self.config.load_testing, 'autoscaling_enabled', False) if self.config.load_testing else False,
+            "configured_max_vus": self.config.load_testing.max_vus if self.config.load_testing else 0,
+            "achieved_max_vus": 0,
+            "planned_vus_stages": [],
+            "executed_vus_stages": [],
+            "report_generated": False,
         }
         
         if self.verbose:
             print("Starting SentinelPerf analysis...")
+            print(f"Execution ID: {self.execution_id}")
             print(f"Target: {initial_state['target_url']}")
             print(f"LLM Mode: {self.llm_mode}")
         
@@ -174,11 +184,15 @@ class SentinelPerfAgent:
             )
             
         except Exception as e:
-            # Handle execution errors
+            # Handle execution errors - ensure report_generated stays False
             error_state = AgentState(
                 phase=AgentPhase.ERROR,
                 environment=self.config._active_env or "unknown",
                 target_url=self.config.target.base_url,
+                execution_id=self.execution_id,
+                config_file_path=self.config_file_path,
+                started_at=self.execution_started_at,
+                report_generated=False,
             )
             error_state.errors.append(str(e))
             

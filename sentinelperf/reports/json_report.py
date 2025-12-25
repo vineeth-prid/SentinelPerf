@@ -71,12 +71,67 @@ class JSONReporter:
             "test_case_coverage_summary": self._test_case_coverage_summary(state),
             "api_trigger_summary": self._api_trigger_summary(state),
             "test_coverage": self._test_coverage_summary(state),
-            "infra_saturation": state.infra_saturation or {"warnings": [], "saturated": False},
+            "infrastructure_metrics": self._infrastructure_metrics(state),
             
             "ci_cd": self._cicd_output(state, result),
         }
         
         return summary
+    
+    def _infrastructure_metrics(self, state: AgentState) -> Dict[str, Any]:
+        """Infrastructure metrics section - ALWAYS included"""
+        infra = state.infra_saturation
+        
+        if not infra:
+            return {
+                "data_available": False,
+                "note": "Infrastructure metrics not captured during this test run",
+                "snapshots": [],
+                "warnings": [],
+                "confidence_penalty": 0,
+            }
+        
+        # Check for new timeline format
+        if infra.get("data_available") and infra.get("snapshots"):
+            return {
+                "data_available": True,
+                "note": None,
+                "snapshots": infra.get("snapshots", []),
+                "warnings": infra.get("warnings", []),
+                "confidence_penalty": infra.get("confidence_penalty", 0),
+            }
+        
+        # Legacy format conversion
+        pre = infra.get("pre_test", {})
+        post = infra.get("post_test", {})
+        
+        snapshots = []
+        if pre:
+            snapshots.append({
+                "phase": "pre_test",
+                "vus": 0,
+                "cpu_percent": pre.get("cpu_percent", 0),
+                "memory_percent": pre.get("memory_percent", 0),
+                "saturated": pre.get("saturated", False),
+                "notes": "Saturated" if pre.get("saturated") else "Normal",
+            })
+        if post:
+            snapshots.append({
+                "phase": "post_test",
+                "vus": 0,
+                "cpu_percent": post.get("cpu_percent", 0),
+                "memory_percent": post.get("memory_percent", 0),
+                "saturated": post.get("saturated", False),
+                "notes": "Saturated" if post.get("saturated") else "Normal",
+            })
+        
+        return {
+            "data_available": len(snapshots) > 0,
+            "note": None if snapshots else "Infrastructure metrics not captured",
+            "snapshots": snapshots,
+            "warnings": infra.get("warnings", []),
+            "confidence_penalty": infra.get("confidence_penalty", 0),
+        }
     
     def _telemetry_summary(self, state: AgentState) -> Dict[str, Any]:
         """Telemetry section"""

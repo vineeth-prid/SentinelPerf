@@ -116,6 +116,11 @@ class AgentState:
     
     This state is passed between nodes and updated as the agent progresses.
     """
+    # Execution identity (MUST be set at run start)
+    execution_id: str = ""  # UUID generated at run start
+    config_file_path: str = ""  # Path to config file used
+    autoscaling_enabled: bool = False  # Whether autoscaling was enabled
+    
     # Current phase
     phase: AgentPhase = AgentPhase.INIT
     
@@ -160,9 +165,12 @@ class AgentState:
     # Error tracking
     errors: List[str] = field(default_factory=list)
     
-    # Execution metadata
+    # Execution metadata - REAL timestamps
     started_at: datetime = field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
+    
+    # Report generation tracking
+    report_generated: bool = False
     
     def add_error(self, error: str) -> None:
         """Add an error to the state"""

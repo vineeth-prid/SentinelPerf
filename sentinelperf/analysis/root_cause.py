@@ -369,7 +369,6 @@ Provide your analysis as JSON following the required output format."""
         Uses only observed metrics to explain system behavior.
         """
         observed_metrics = input_contract.observed_metrics
-        timeline = input_contract.failure_timeline
         
         # Extract observed metrics
         max_vus = observed_metrics.get("max_vus", 0)

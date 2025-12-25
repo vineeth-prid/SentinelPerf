@@ -347,11 +347,19 @@ No load test results available."""
         return header + "\n" + "\n".join(rows)
     
     def _test_case_summary_section(self, state: AgentState) -> str:
-        """Test Case Summary section"""
+        """Test Case Summary section - ALWAYS rendered"""
+        lines = [
+            "## Test Case Summary",
+            "",
+        ]
+        
         if not state.load_results:
-            return """## Test Case Summary
-
-No test cases were executed."""
+            lines.extend([
+                "| Test Case | Purpose | Load Pattern | Max VUs | Duration |",
+                "|-----------|---------|--------------|---------|----------|",
+                "| *None* | *No tests executed* | *N/A* | *N/A* | *N/A* |",
+            ])
+            return "\n".join(lines)
         
         # Define test type semantics
         test_semantics = {
@@ -363,12 +371,10 @@ No test cases were executed."""
             "recovery": ("Recovery behavior test", "Overload then drop"),
         }
         
-        lines = [
-            "## Test Case Summary",
-            "",
+        lines.extend([
             "| Test Case | Purpose | Load Pattern | Max VUs | Duration |",
             "|-----------|---------|--------------|---------|----------|",
-        ]
+        ])
         
         # Group results by test type base name
         seen_types = set()
@@ -378,7 +384,6 @@ No test cases were executed."""
             
             # Skip if we've already added this type
             if test_type_base in seen_types:
-                # Update max VUs for this type
                 continue
             
             # Find max VUs and duration for this test type

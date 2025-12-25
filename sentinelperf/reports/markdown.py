@@ -468,14 +468,45 @@ No load test results available."""
         return header + "\n" + "\n".join(rows)
     
     def _test_case_summary_section(self, state: AgentState) -> str:
-        """Test Case Summary section - ALWAYS rendered"""
+        """Test Case Summary section - ALWAYS rendered with VU transparency"""
         lines = [
             "## Test Case Summary",
             "",
         ]
         
+        # Add configured vs achieved VUs transparency
+        configured_max = state.configured_max_vus
+        achieved_max = state.achieved_max_vus
+        
+        if configured_max > 0:
+            lines.append("### Load Execution Summary")
+            lines.append("")
+            lines.append(f"- **Configured Max VUs:** {configured_max}")
+            lines.append(f"- **Achieved Max VUs:** {achieved_max}")
+            
+            if achieved_max < configured_max:
+                if state.early_stop_reason:
+                    lines.append(f"- **Early Stop Reason:** {state.early_stop_reason}")
+                elif state.breaking_point and state.breaking_point.vus_at_break > 0:
+                    lines.append(f"- **Early Stop Reason:** Breaking point detected at {state.breaking_point.vus_at_break} VUs")
+                else:
+                    lines.append("- **Early Stop Reason:** Test did not reach configured maximum")
+            elif achieved_max >= configured_max:
+                lines.append("- **Status:** ✅ Full load range executed")
+            
+            # Show planned vs executed stages if available
+            if state.planned_vus_stages and state.executed_vus_stages:
+                planned = ", ".join(str(v) for v in state.planned_vus_stages)
+                executed = ", ".join(str(v) for v in state.executed_vus_stages)
+                lines.append(f"- **Planned Stages:** {planned} VUs")
+                lines.append(f"- **Executed Stages:** {executed} VUs")
+            
+            lines.append("")
+        
         if not state.load_results:
             lines.extend([
+                "### Test Cases",
+                "",
                 "| Test Case | Purpose | Load Pattern | Max VUs | Duration |",
                 "|-----------|---------|--------------|---------|----------|",
                 "| *None* | *No tests executed* | *N/A* | *N/A* | *N/A* |",
@@ -488,11 +519,14 @@ No load test results available."""
             "stress": ("Incremental capacity test", "Ramping load"),
             "spike": ("Burst resilience test", "Sudden spike"),
             "adaptive": ("Adaptive capacity search", "Stepwise escalation"),
+            "autoscale": ("Auto-scaling ramp", "Staged escalation"),
             "sustained": ("Long duration stability", "Sustained load"),
             "recovery": ("Recovery behavior test", "Overload then drop"),
         }
         
         lines.extend([
+            "### Test Cases",
+            "",
             "| Test Case | Purpose | Load Pattern | Max VUs | Duration |",
             "|-----------|---------|--------------|---------|----------|",
         ])

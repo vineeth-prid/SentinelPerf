@@ -24,7 +24,7 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 4. API & Backend Trigger Summary ← ALWAYS RENDERED
 5. Breaking Point Analysis
 6. Failure Timeline (within Breaking Point)
-7. Root Cause Analysis
+7. Root Cause Analysis ← EVIDENCE-DRIVEN
 8. Recommendations
 9. Load Test Results
 10. Infrastructure Saturation ← CONDITIONAL
@@ -32,25 +32,31 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 12. Methodology
 13. Appendix
 
-**Sections ALWAYS Rendered (even with empty data):**
-- ✅ **Test Case Summary**: Shows test type, purpose, load pattern, max VUs, duration
-  - Empty state: `*None* | *No tests executed* | *N/A* | *N/A* | *N/A*`
-- ✅ **Test Case Coverage Summary**: Load pattern/failure mode/observability coverage
-  - Empty state: All patterns show "Not executed", failure modes show "Not observed"
-- ✅ **API & Backend Trigger Summary**: APIs exercised, test phases, observed effects
-  - Empty state: `*Not executed* | *N/A* | *Not tested*`
-  - Shows `"API-level telemetry not available; summary inferred from load execution"`
-  - Instability section shows explicit messages like "No instability detected during testing"
+### Root Cause Analysis Refactored (2024-12-25) ✅
 
-**JSON Report Explicit Values:**
-- `test_case_summary.note`: "No test cases were executed" (when empty)
-- `api_trigger_summary.observed_effect`: "not_tested" / "no_degradation_detected" / "errors_increased"
-- `api_trigger_summary.test_phases`: ["not_executed"] when no tests run
-- `api_trigger_summary.instability_note`: Explicit message when no instability APIs
+**Evidence-Driven Analysis (No Failure Case):**
+- Uses observed metrics: error rate, latency, throughput, infra signals
+- Example summary: "No breaking point detected. Error rate remained at 2.00% (below failure threshold). P95 latency peaked at 120ms (within acceptable range)."
+- Example explanation: "System remained stable because error rate stayed low, latency responsive, throughput scaled to 45 RPS"
+
+**Renamed Headings (No Failure):**
+- "Primary Cause" → "System Behavior Explanation"
+- "Contributing Factors" → "Observations"  
+- "Failure Pattern" → "Observed Behavior"
+
+**Failure Case Unchanged:**
+- Still uses "Primary Cause", "Contributing Factors", "Failure Pattern"
+
+**JSON Report Updated:**
+- `is_failure`: Boolean flag
+- `system_behavior_explanation`: Used when no failure (primary_cause is null)
+- `observations`: Used when no failure (contributing_factors is null)
+- `observed_behavior`: Used when no failure (failure_pattern is null)
 
 ### Files Modified
-- `/app/sentinelperf/reports/markdown.py` - Sections always render with fallbacks
-- `/app/sentinelperf/reports/json_report.py` - Sections always render with explicit notes
+- `/app/sentinelperf/analysis/root_cause.py` - Evidence-driven no-failure analysis
+- `/app/sentinelperf/reports/markdown.py` - Dynamic headings based on failure status
+- `/app/sentinelperf/reports/json_report.py` - Conditional field population
 
 ### Test Commands
 ```bash

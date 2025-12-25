@@ -62,6 +62,9 @@ class JSONReporter:
                 "errors": state.errors,
             },
             
+            # Load execution transparency
+            "load_execution": self._load_execution_summary(state),
+            
             "telemetry": self._telemetry_summary(state),
             "breaking_point": self._breaking_point_summary(state),
             "root_cause": self._root_cause_summary(state),
@@ -77,6 +80,32 @@ class JSONReporter:
         }
         
         return summary
+    
+    def _load_execution_summary(self, state: AgentState) -> Dict[str, Any]:
+        """Load execution transparency - configured vs achieved VUs"""
+        configured_max = state.configured_max_vus
+        achieved_max = state.achieved_max_vus
+        
+        # Calculate achieved from results if not set
+        if achieved_max == 0 and state.load_results:
+            achieved_max = max((r.vus for r in state.load_results), default=0)
+        
+        # Determine early stop reason
+        early_stop_reason = state.early_stop_reason
+        if not early_stop_reason and achieved_max < configured_max:
+            if state.breaking_point and state.breaking_point.vus_at_break > 0:
+                early_stop_reason = f"Breaking point detected at {state.breaking_point.vus_at_break} VUs"
+            elif configured_max > 0:
+                early_stop_reason = "Test did not reach configured maximum"
+        
+        return {
+            "configured_max_vus": configured_max,
+            "achieved_max_vus": achieved_max,
+            "full_range_executed": achieved_max >= configured_max if configured_max > 0 else None,
+            "early_stop_reason": early_stop_reason,
+            "planned_vus_stages": state.planned_vus_stages,
+            "executed_vus_stages": state.executed_vus_stages,
+        }
     
     def _infrastructure_metrics(self, state: AgentState) -> Dict[str, Any]:
         """Infrastructure metrics section - ALWAYS included"""

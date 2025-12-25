@@ -74,13 +74,13 @@ def format_console_output(result: ExecutionResult, execution_id: str = "") -> st
     return "\n".join(lines[:5])
 
 
-def print_summary(result: ExecutionResult) -> None:
+def print_summary(result: ExecutionResult, execution_id: str = "") -> None:
     """
     Print execution summary to console.
     
     Max 5 lines as per requirements.
     """
-    output = format_console_output(result)
+    output = format_console_output(result, execution_id)
     print(output)
 
 

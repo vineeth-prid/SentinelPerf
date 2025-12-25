@@ -15,60 +15,49 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 
 **Confidence Consistency**: All scenarios show proper confidence flow from BP → RC → Recommendations
 
-### MVP2 Report Polish (2024-12-23) ✅
+### Auto-Scaling Load Execution (2024-12-25) ✅
 
-**Section Order (VERIFIED):**
-1. Executive Summary
-2. Test Case Summary ← ALWAYS RENDERED
-3. Test Case Coverage Summary ← ALWAYS RENDERED
-4. API & Backend Trigger Summary ← ALWAYS RENDERED
-5. Breaking Point Analysis
-6. Failure Timeline (within Breaking Point)
-7. Root Cause Analysis ← EVIDENCE-DRIVEN
-8. Recommendations
-9. Load Test Results
-10. Infrastructure Metrics ← ALWAYS RENDERED (enhanced)
-11. Telemetry Analysis
-12. Methodology
-13. Appendix
+**PART 1 - Load Execution Fixed:**
+- New `AutoScaleConfig` class for staged ramp configuration
+- New `generate_autoscale_test()` method with proper k6 stages
+- New `generate_stress_test_staged()` for stress tests with staged ramp
+- k6 stages generated dynamically: initial → step → step → ... → max → ramp down
+- `TestScript` now tracks `configured_max_vus` and `stage_vus_list`
 
-### Infrastructure Metrics Enhanced (2024-12-25) ✅
+**PART 2 - Reporting Transparency:**
+- `AgentState` now tracks:
+  - `configured_max_vus`: What was configured
+  - `achieved_max_vus`: Highest VUs actually executed
+  - `early_stop_reason`: Why execution stopped (if early)
+  - `planned_vus_stages` / `executed_vus_stages`: Full audit trail
 
-**New Timeline-Based Reporting:**
-- Captures metrics at key execution points:
-  - `pre_baseline`: Before any load
-  - `peak_stress`: At maximum stress VUs
-  - `peak_spike`: At maximum spike VUs  
-  - `end_of_test`: After all tests complete
-
-**Markdown Table Format:**
+**Executive Summary now shows:**
 ```
-| Load Phase | VUs | CPU% | Memory% | Notes |
-|------------|-----|------|---------|-------|
-| Pre Baseline | 0 | 15.0% | 45.0% | Normal |
-| Peak Stress | 20 | 55.0% | 62.0% | Elevated CPU |
-| Peak Spike | 50 | 88.0% | 78.0% | ⚠️ Resource saturation |
-| End Of Test | 0 | 25.0% | 50.0% | Normal |
+**Load Execution:** Scaled to **250 VUs** of 1000 configured — breaking point detected
 ```
 
-**Always Rendered:**
-- If no data: "Infrastructure metrics not captured during this test run"
-- Legacy format (pre_test/post_test) automatically converted
-
-**JSON Structure:**
-```json
-{
-  "data_available": true,
-  "snapshots": [{"phase": "...", "vus": 0, "cpu_percent": 15.0, ...}],
-  "warnings": [],
-  "confidence_penalty": 0.15
-}
+**Test Case Summary now shows:**
 ```
+### Load Execution Summary
+- Configured Max VUs: 1000
+- Achieved Max VUs: 250
+- Early Stop Reason: Breaking point detected at 250 VUs
+- Planned Stages: 10, 100, 200, ... VUs
+- Executed Stages: 10, 100, 200, 250 VUs
+```
+
+**JSON Report includes:**
+- `load_execution.configured_max_vus`
+- `load_execution.achieved_max_vus`
+- `load_execution.full_range_executed` (boolean)
+- `load_execution.early_stop_reason`
+- `load_execution.planned_vus_stages` / `executed_vus_stages`
 
 ### Files Modified
-- `/app/sentinelperf/telemetry/infra_monitor.py` - Added InfraTimeline, InfraSnapshot classes
-- `/app/sentinelperf/reports/markdown.py` - Timeline table rendering
-- `/app/sentinelperf/reports/json_report.py` - New infrastructure_metrics section
+- `/app/sentinelperf/load/generator.py` - AutoScaleConfig, generate_autoscale_test, generate_stress_test_staged
+- `/app/sentinelperf/core/state.py` - Added VU tracking fields
+- `/app/sentinelperf/reports/markdown.py` - Executive Summary & Test Case Summary transparency
+- `/app/sentinelperf/reports/json_report.py` - load_execution section
 
 ### Test Commands
 ```bash
@@ -83,5 +72,4 @@ python -m sentinelperf.cli validate --config=./sentinelperf.yaml
 - ❌ New telemetry sources
 - ❌ Auth support
 - ❌ Docker/binary packaging
-- ❌ Adaptive load
 - ❌ Code refactoring

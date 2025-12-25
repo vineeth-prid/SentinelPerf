@@ -2,11 +2,20 @@
 
 import argparse
 import sys
+import uuid
 from pathlib import Path
+from datetime import datetime, timezone
 
 from sentinelperf.config.loader import load_config
 from sentinelperf.core.agent import SentinelPerfAgent
 from sentinelperf.reports.console import print_summary
+
+
+# ANSI color codes
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RESET = "\033[0m"
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -74,38 +83,55 @@ Examples:
 
 def cmd_run(args: argparse.Namespace) -> int:
     """Execute the run command"""
+    # Generate execution ID at the VERY START
+    execution_id = str(uuid.uuid4())
+    execution_started_at = datetime.now(timezone.utc)
+    
     config_path = Path(args.config)
     
     if not config_path.exists():
-        print(f"\033[91mError:\033[0m Configuration file not found: {config_path}", file=sys.stderr)
+        print(f"{RED}Error:{RESET} Configuration file not found: {config_path}", file=sys.stderr)
         print(f"  Create a sentinelperf.yaml file or specify path with --config", file=sys.stderr)
+        print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
         return 1
     
     try:
         config = load_config(config_path, args.env)
     except ValueError as e:
-        print(f"\033[91mConfiguration Error:\033[0m {e}", file=sys.stderr)
+        print(f"{RED}Configuration Error:{RESET} {e}", file=sys.stderr)
+        print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
         return 1
     except Exception as e:
-        print(f"\033[91mError:\033[0m Failed to load configuration: {e}", file=sys.stderr)
+        print(f"{RED}Error:{RESET} Failed to load configuration: {e}", file=sys.stderr)
+        print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
         return 1
     
     if args.verbose:
+        print(f"Execution ID: {execution_id}")
+        print(f"Started at: {execution_started_at.isoformat()}")
         print(f"Loaded configuration for environment: {args.env}")
         print(f"Target URL: {config.target.base_url}")
     
-    # Initialize and run agent
+    # Initialize and run agent with execution context
     agent = SentinelPerfAgent(
         config=config,
         llm_mode=args.llm_mode,
         output_dir=Path(args.output_dir),
-        verbose=args.verbose
+        verbose=args.verbose,
+        execution_id=execution_id,
+        execution_started_at=execution_started_at,
+        config_file_path=str(config_path.resolve()),
     )
     
     result = agent.run()
     
-    # Print console summary (max 5 lines)
-    print_summary(result)
+    # Check if report was generated (fail-loud behavior)
+    if not result.state.report_generated:
+        print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
+        return 1
+    
+    # Print console summary with execution ID
+    print_summary(result, execution_id=execution_id)
     
     return 0 if result.success else 1
 

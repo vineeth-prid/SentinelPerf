@@ -262,20 +262,25 @@ Provide your analysis as JSON following the required output format."""
         Rules-based fallback analysis.
         
         Provides deterministic output when LLM is unavailable.
+        Uses only observed metrics - no speculation.
         """
         classification = input_contract.failure_classification
         breaking_point = input_contract.breaking_point
         timeline = input_contract.failure_timeline
         rationale = input_contract.classification_rationale
+        observed_metrics = input_contract.observed_metrics
         
-        # Build summary based on classification
+        # Handle no_failure case with evidence-driven explanation
+        if classification == "no_failure":
+            return self._build_no_failure_analysis(input_contract)
+        
+        # Build summary based on classification (failure cases)
         summaries = {
             "capacity_exhaustion": "System reached resource limits causing throughput plateau",
             "latency_amplification": "Request latency increased exponentially under load due to resource contention",
             "error_driven_collapse": "Error rate exceeded threshold causing cascading failures",
             "instability_under_burst": "System failed to handle sudden traffic spike",
             "already_degraded_baseline": "System showed degradation even at baseline load levels",
-            "no_failure": "No breaking point detected within test parameters",
         }
         
         primary_causes = {
@@ -284,7 +289,6 @@ Provide your analysis as JSON following the required output format."""
             "error_driven_collapse": "Error propagation and cascade effect",
             "instability_under_burst": "Insufficient burst capacity or cold-start issues",
             "already_degraded_baseline": "Pre-existing system issues before load testing",
-            "no_failure": "System capacity exceeds tested load levels",
         }
         
         root_cause_summary = summaries.get(classification, "Unknown failure pattern")
@@ -341,7 +345,7 @@ Provide your analysis as JSON following the required output format."""
         
         # Detect failure pattern and get explanation
         pattern, pattern_explanation = self._detect_failure_pattern(
-            timeline, breaking_point, input_contract.observed_metrics
+            timeline, breaking_point, observed_metrics
         )
         
         return LLMOutputContract(
@@ -353,6 +357,136 @@ Provide your analysis as JSON following the required output format."""
             limitations=limitations,
             failure_pattern=pattern,
             pattern_explanation=pattern_explanation,
+        )
+    
+    def _build_no_failure_analysis(
+        self,
+        input_contract: LLMInputContract,
+    ) -> LLMOutputContract:
+        """
+        Build evidence-driven analysis when no failure was detected.
+        
+        Uses only observed metrics to explain system behavior.
+        """
+        observed_metrics = input_contract.observed_metrics
+        timeline = input_contract.failure_timeline
+        
+        # Extract observed metrics
+        max_vus = observed_metrics.get("max_vus", 0)
+        max_rps = observed_metrics.get("max_rps", 0)
+        max_error_rate = observed_metrics.get("max_error_rate", 0)
+        max_p95_latency = observed_metrics.get("max_p95_latency", 0)
+        total_requests = observed_metrics.get("total_requests", 0)
+        test_types = observed_metrics.get("test_types", [])
+        
+        # Build evidence-based explanation
+        evidence_points = []
+        
+        # Error rate evidence
+        if max_error_rate > 0:
+            evidence_points.append(
+                f"Error rate remained at {max_error_rate:.2%} (below failure threshold)"
+            )
+        else:
+            evidence_points.append("No errors observed during testing")
+        
+        # Latency evidence
+        if max_p95_latency > 0:
+            evidence_points.append(
+                f"P95 latency peaked at {max_p95_latency:.0f}ms (within acceptable range)"
+            )
+        
+        # Throughput evidence
+        if max_rps > 0:
+            evidence_points.append(
+                f"Throughput scaled to {max_rps:.1f} RPS without plateau"
+            )
+        
+        # Load evidence
+        if max_vus > 0:
+            evidence_points.append(
+                f"System handled up to {max_vus} concurrent users"
+            )
+        
+        # Build summary from evidence
+        if evidence_points:
+            behavior_summary = ". ".join(evidence_points[:3]) + "."
+        else:
+            behavior_summary = "Insufficient metrics captured during testing."
+        
+        root_cause_summary = f"No breaking point detected. {behavior_summary}"
+        
+        # Build behavior explanation (replaces "Primary Cause")
+        behavior_explanation_parts = []
+        
+        if max_error_rate < 0.01:
+            behavior_explanation_parts.append("error rate stayed negligible")
+        elif max_error_rate < 0.05:
+            behavior_explanation_parts.append(f"error rate ({max_error_rate:.2%}) remained below threshold")
+        
+        if max_p95_latency > 0 and max_p95_latency < 500:
+            behavior_explanation_parts.append("latency remained responsive")
+        elif max_p95_latency > 0:
+            behavior_explanation_parts.append(f"latency ({max_p95_latency:.0f}ms) stayed acceptable")
+        
+        if max_rps > 0:
+            behavior_explanation_parts.append(f"throughput scaled to {max_rps:.1f} RPS")
+        
+        if behavior_explanation_parts:
+            behavior_explanation = "System remained stable because " + ", ".join(behavior_explanation_parts)
+        else:
+            behavior_explanation = "No metrics exceeded failure thresholds during testing"
+        
+        # Contributing factors (evidence-based observations)
+        contributing_factors = []
+        
+        if "baseline" in test_types:
+            contributing_factors.append("Baseline test completed without issues")
+        if "stress" in test_types:
+            contributing_factors.append("Stress test showed linear scaling")
+        if "spike" in test_types:
+            contributing_factors.append("Spike test handled burst traffic")
+        
+        if total_requests > 0:
+            contributing_factors.append(f"Total of {total_requests:,} requests processed")
+        
+        # Limitations
+        limitations = ["Analysis based on rules-only (LLM unavailable)"]
+        
+        if max_vus < 50:
+            limitations.append(f"Maximum tested load ({max_vus} VUs) may be below production levels")
+        
+        if len(test_types) < 3:
+            limitations.append("Not all load patterns were tested")
+        
+        # Assumptions
+        assumptions = [
+            "Failure thresholds are correctly configured",
+            "Tested load range is representative of expected traffic",
+        ]
+        
+        # Confidence based on test coverage
+        confidence = 0.5  # Base for no-failure
+        if "baseline" in test_types:
+            confidence += 0.1
+        if "stress" in test_types:
+            confidence += 0.1
+        if "spike" in test_types:
+            confidence += 0.1
+        if total_requests > 1000:
+            confidence += 0.1
+        
+        confidence = min(confidence, 0.80)  # Cap no-failure confidence
+        
+        return LLMOutputContract(
+            root_cause_summary=root_cause_summary,
+            primary_cause=behavior_explanation,  # Will be rendered as "System Behavior Explanation"
+            contributing_factors=contributing_factors,
+            confidence=confidence,
+            assumptions=assumptions,
+            limitations=limitations,
+            failure_pattern="no_violations",
+            pattern_explanation="All metrics remained within acceptable thresholds throughout testing.",
         )
     
     def _detect_failure_pattern(

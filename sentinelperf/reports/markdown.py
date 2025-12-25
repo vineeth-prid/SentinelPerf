@@ -80,30 +80,67 @@ class MarkdownReporter:
 ---"""
 
     def _executive_summary(self, state: AgentState, result: ExecutionResult) -> str:
-        """Executive summary section"""
+        """Executive summary section with load execution transparency"""
         summary_lines = ["## Executive Summary", ""]
         
+        # Load Execution Transparency
+        configured_max = state.configured_max_vus
+        achieved_max = state.achieved_max_vus
+        
+        if configured_max > 0:
+            if achieved_max >= configured_max:
+                load_summary = f"**Load Execution:** Scaled to **{achieved_max} VUs** (configured maximum reached)"
+            elif achieved_max > 0:
+                load_summary = f"**Load Execution:** Scaled to **{achieved_max} VUs** of {configured_max} configured"
+                if state.early_stop_reason:
+                    load_summary += f" — stopped early: {state.early_stop_reason}"
+                elif state.breaking_point and state.breaking_point.vus_at_break > 0:
+                    load_summary += " — breaking point detected"
+            else:
+                load_summary = f"**Load Execution:** Configured for {configured_max} VUs (execution incomplete)"
+            summary_lines.append(load_summary)
+            summary_lines.append("")
+        elif state.load_results:
+            # Fallback: calculate from load results
+            max_from_results = max((r.vus for r in state.load_results), default=0)
+            if max_from_results > 0:
+                summary_lines.append(f"**Load Execution:** Tested up to **{max_from_results} VUs**")
+                summary_lines.append("")
+        
+        # Breaking point summary
         if state.breaking_point and state.breaking_point.vus_at_break > 0:
             bp = state.breaking_point
             summary_lines.append(
-                f"The system reached its **breaking point at {bp.vus_at_break} virtual users** "
-                f"({bp.rps_at_break:.1f} requests/second), where {bp.failure_type} exceeded "
-                f"acceptable thresholds."
+                f"**Breaking Point:** System reached its limit at **{bp.vus_at_break} VUs** "
+                f"({bp.rps_at_break:.1f} RPS) — {bp.failure_type.replace('_', ' ')}"
             )
         else:
-            summary_lines.append(
-                "No breaking point was detected within the tested load range. "
-                "The system handled all test scenarios within acceptable thresholds."
-            )
+            max_tested = achieved_max or max((r.vus for r in state.load_results), default=0) if state.load_results else 0
+            if max_tested > 0:
+                summary_lines.append(
+                    f"**Breaking Point:** Not detected within tested range (up to {max_tested} VUs)"
+                )
+            else:
+                summary_lines.append(
+                    "**Breaking Point:** Not detected — load tests may not have executed"
+                )
         
         summary_lines.append("")
         
         if state.root_cause and state.root_cause.primary_cause:
             rc = state.root_cause
-            summary_lines.append(
-                f"**Primary Root Cause:** {rc.primary_cause} "
-                f"(confidence: {rc.confidence:.0%})"
-            )
+            # Use different label based on failure status
+            is_failure = state.breaking_point and state.breaking_point.vus_at_break > 0
+            if is_failure:
+                summary_lines.append(
+                    f"**Primary Cause:** {rc.primary_cause} "
+                    f"(confidence: {rc.confidence:.0%})"
+                )
+            else:
+                summary_lines.append(
+                    f"**System Behavior:** {rc.primary_cause} "
+                    f"(confidence: {rc.confidence:.0%})"
+                )
         
         return "\n".join(summary_lines)
     

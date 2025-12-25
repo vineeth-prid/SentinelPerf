@@ -49,10 +49,26 @@ class JSONReporter:
     def _build_summary(self, state: AgentState, result: ExecutionResult) -> Dict[str, Any]:
         """Build JSON summary structure"""
         
+        # Calculate actual max VUs from load results
+        actual_max_vus = state.achieved_max_vus
+        if actual_max_vus == 0 and state.load_results:
+            actual_max_vus = max((r.vus for r in state.load_results), default=0)
+        
         summary = {
             "version": "1.0",
-            "generated_at": datetime.utcnow().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
             "status": "success" if result.success else "failure",
+            
+            # Execution Proof - MANDATORY section for execution integrity
+            "execution_proof": {
+                "execution_id": state.execution_id or None,
+                "started_at": state.started_at.isoformat() if state.started_at else None,
+                "completed_at": state.completed_at.isoformat() if state.completed_at else None,
+                "config": state.config_file_path or None,
+                "environment": state.environment,
+                "max_vus_executed": actual_max_vus,
+                "autoscaling_enabled": state.autoscaling_enabled,
+            },
             
             "target": {
                 "url": state.target_url,
@@ -60,6 +76,7 @@ class JSONReporter:
             },
             
             "execution": {
+                "execution_id": state.execution_id or None,
                 "started_at": state.started_at.isoformat() if state.started_at else None,
                 "completed_at": state.completed_at.isoformat() if state.completed_at else None,
                 "duration_seconds": (

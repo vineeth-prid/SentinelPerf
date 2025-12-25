@@ -257,18 +257,34 @@ class JSONReporter:
         ]
     
     def _test_case_summary(self, state: AgentState) -> Dict[str, Any]:
-        """Test Case Summary - ALWAYS rendered, describes what tests were executed"""
+        """Test Case Summary - ALWAYS rendered with VU transparency"""
         test_semantics = {
             "baseline": {"purpose": "Steady validation", "load_pattern": "Constant load"},
             "stress": {"purpose": "Incremental capacity test", "load_pattern": "Ramping load"},
             "spike": {"purpose": "Burst resilience test", "load_pattern": "Sudden spike"},
             "adaptive": {"purpose": "Adaptive capacity search", "load_pattern": "Stepwise escalation"},
+            "autoscale": {"purpose": "Auto-scaling ramp", "load_pattern": "Staged escalation"},
             "sustained": {"purpose": "Long duration stability", "load_pattern": "Sustained load"},
             "recovery": {"purpose": "Recovery behavior test", "load_pattern": "Overload then drop"},
         }
         
+        # Load execution transparency
+        configured_max = state.configured_max_vus
+        achieved_max = state.achieved_max_vus
+        
+        if achieved_max == 0 and state.load_results:
+            achieved_max = max((r.vus for r in state.load_results), default=0)
+        
+        load_execution = {
+            "configured_max_vus": configured_max,
+            "achieved_max_vus": achieved_max,
+            "full_range_executed": achieved_max >= configured_max if configured_max > 0 else None,
+            "early_stop_reason": state.early_stop_reason,
+        }
+        
         if not state.load_results:
             return {
+                "load_execution": load_execution,
                 "test_cases": [],
                 "note": "No test cases were executed"
             }
@@ -301,6 +317,7 @@ class JSONReporter:
             seen_types.add(test_type_base)
         
         return {
+            "load_execution": load_execution,
             "test_cases": test_cases,
             "note": None
         }

@@ -499,7 +499,7 @@ No load test results available."""
         return "\n".join(lines)
     
     def _api_trigger_summary_section(self, state: AgentState) -> str:
-        """API & Backend Trigger Summary section"""
+        """API & Backend Trigger Summary section - ALWAYS rendered"""
         lines = [
             "## API & Backend Trigger Summary",
             "",
@@ -512,7 +512,7 @@ No load test results available."""
             len(state.telemetry_insights.endpoints) > 0
         )
         
-        # Get endpoints from telemetry or generated tests
+        # Get endpoints from telemetry or generated tests or config
         endpoints = []
         if has_api_telemetry:
             for ep in state.telemetry_insights.endpoints[:10]:
@@ -530,15 +530,18 @@ No load test results available."""
                         if path not in endpoints:
                             endpoints.append(path)
         
-        # Add fallback note if no API-level telemetry
-        if not has_api_telemetry:
+        # Always show telemetry status
+        if has_api_telemetry:
+            lines.append("*API-level telemetry available from application instrumentation.*")
+        else:
             lines.append("*API-level telemetry not available; summary inferred from load execution.*")
-            lines.append("")
+        lines.append("")
         
+        # Use target URL as fallback endpoint
         if not endpoints:
-            endpoints = [state.target_url or "/ (default)"]
+            endpoints = [state.target_url or "/ (default target)"]
         
-        # A) APIs Exercised
+        # A) APIs/Targets Exercised
         lines.extend([
             "### A) APIs/Targets Exercised",
             "",
@@ -553,34 +556,40 @@ No load test results available."""
                 phase = r.test_type.split("_")[0].lower()
                 test_phases.add(phase)
         
-        # Determine overall observed effect
-        overall_effect = "None"
-        if state.breaking_point and state.breaking_point.vus_at_break > 0:
+        # Determine overall observed effect based on available data
+        if not state.load_results:
+            overall_effect = "Not tested"
+        elif state.breaking_point and state.breaking_point.vus_at_break > 0:
             if state.breaking_point.failure_type == "error_rate_breach":
                 overall_effect = "Errors increased"
             elif state.breaking_point.failure_type == "latency_degradation":
                 overall_effect = "Latency increased"
             else:
                 overall_effect = "Degradation observed"
-        elif state.failure_category == "no_failure":
-            overall_effect = "None"
+        else:
+            overall_effect = "No degradation detected"
         
         # Generate load applied descriptions
-        for endpoint in endpoints[:5]:  # Limit to 5 endpoints
-            phases_str = ", ".join(sorted(test_phases)) if test_phases else "N/A"
-            
-            # Describe load applied
-            max_vus = max((r.vus for r in state.load_results), default=0) if state.load_results else 0
-            if "spike" in test_phases:
-                load_desc = f"Spike to {max_vus} VUs"
-            elif "stress" in test_phases or "adaptive" in test_phases:
-                load_desc = f"Gradual ramp to {max_vus} VUs"
-            elif "baseline" in test_phases:
-                load_desc = f"Steady {max_vus} VUs"
-            else:
-                load_desc = f"Up to {max_vus} VUs"
-            
-            lines.append(f"| {endpoint} | {phases_str} | {load_desc} | {overall_effect} |")
+        if not state.load_results:
+            # No load tests executed
+            for endpoint in endpoints[:5]:
+                lines.append(f"| {endpoint} | *Not executed* | *N/A* | *Not tested* |")
+        else:
+            max_vus = max((r.vus for r in state.load_results), default=0)
+            for endpoint in endpoints[:5]:
+                phases_str = ", ".join(sorted(test_phases)) if test_phases else "N/A"
+                
+                # Describe load applied
+                if "spike" in test_phases:
+                    load_desc = f"Spike to {max_vus} VUs"
+                elif "stress" in test_phases or "adaptive" in test_phases:
+                    load_desc = f"Gradual ramp to {max_vus} VUs"
+                elif "baseline" in test_phases:
+                    load_desc = f"Steady {max_vus} VUs"
+                else:
+                    load_desc = f"Up to {max_vus} VUs"
+                
+                lines.append(f"| {endpoint} | {phases_str} | {load_desc} | {overall_effect} |")
         
         if len(endpoints) > 5:
             lines.append(f"| ... and {len(endpoints) - 5} more | - | - | - |")
@@ -608,6 +617,8 @@ No load test results available."""
             for api_signal in instability_apis[:5]:
                 phase = state.breaking_point.failure_type if state.breaking_point else "N/A"
                 lines.append(f"| {api_signal} | {phase} | stress |")
+        elif not state.breaking_point or state.breaking_point.vus_at_break == 0:
+            lines.append("No instability detected during testing.")
         else:
             lines.append("No single API endpoint dominated failure behavior.")
         

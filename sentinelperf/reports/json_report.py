@@ -123,15 +123,24 @@ class JSONReporter:
             return {"analyzed": False}
         
         rc = state.root_cause
+        
+        # Determine if this is a failure or no-failure case
+        is_failure = state.breaking_point and state.breaking_point.vus_at_break > 0
+        
         return {
             "analyzed": True,
+            "is_failure": is_failure,
             "root_cause_summary": rc.root_cause_summary,
-            "primary_cause": rc.primary_cause,
-            "contributing_factors": rc.contributing_factors,
+            # Use different field name based on failure status
+            "primary_cause": rc.primary_cause if is_failure else None,
+            "system_behavior_explanation": rc.primary_cause if not is_failure else None,
+            "contributing_factors": rc.contributing_factors if is_failure else None,
+            "observations": rc.contributing_factors if not is_failure else None,
             "confidence": rc.confidence,
             "assumptions": rc.assumptions,
             "limitations": rc.limitations,
-            "failure_pattern": rc.failure_pattern,
+            "failure_pattern": rc.failure_pattern if is_failure else None,
+            "observed_behavior": rc.failure_pattern if not is_failure else None,
             "pattern_explanation": rc.pattern_explanation,
             "llm_mode": rc.llm_mode,
             "llm_model": rc.llm_model,

@@ -1140,6 +1140,11 @@ class SentinelPerfAgent:
         if self.verbose:
             print("[8/8] Generating reports...")
         
+        # Update achieved_max_vus from actual load results
+        if state.get("load_results"):
+            actual_max_vus = max((r.vus for r in state["load_results"]), default=0)
+            state["achieved_max_vus"] = actual_max_vus
+        
         # Convert to AgentState for report generation
         agent_state = self._dict_to_agent_state(state)
         
@@ -1154,21 +1159,24 @@ class SentinelPerfAgent:
             summary="",
         )
         
-        # Generate markdown report
+        # Generate markdown report with timestamp-based filename
         md_reporter = MarkdownReporter(self.output_dir)
         md_path = md_reporter.generate(intermediate_result)
         
-        # Generate JSON report
+        # Generate JSON report with timestamp-based filename
         json_reporter = JSONReporter(self.output_dir)
         json_path = json_reporter.generate(intermediate_result)
+        
+        # Mark report as generated ONLY after successful generation
+        state["report_generated"] = True
         
         if self.verbose:
             print(f"  Markdown report: {md_path}")
             print(f"  JSON report: {json_path}")
         
-        # Mark complete
+        # Mark complete with REAL timestamp
         state["phase"] = AgentPhase.COMPLETE.value
-        state["completed_at"] = datetime.utcnow().isoformat()
+        state["completed_at"] = datetime.now(timezone.utc).isoformat()
         
         return state
     

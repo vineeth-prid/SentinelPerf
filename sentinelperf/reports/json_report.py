@@ -164,10 +164,7 @@ class JSONReporter:
         ]
     
     def _test_case_summary(self, state: AgentState) -> Dict[str, Any]:
-        """Test Case Summary - describes what tests were executed"""
-        if not state.load_results:
-            return {"test_cases": []}
-        
+        """Test Case Summary - ALWAYS rendered, describes what tests were executed"""
         test_semantics = {
             "baseline": {"purpose": "Steady validation", "load_pattern": "Constant load"},
             "stress": {"purpose": "Incremental capacity test", "load_pattern": "Ramping load"},
@@ -176,6 +173,12 @@ class JSONReporter:
             "sustained": {"purpose": "Long duration stability", "load_pattern": "Sustained load"},
             "recovery": {"purpose": "Recovery behavior test", "load_pattern": "Overload then drop"},
         }
+        
+        if not state.load_results:
+            return {
+                "test_cases": [],
+                "note": "No test cases were executed"
+            }
         
         test_cases = []
         seen_types = set()
@@ -204,7 +207,10 @@ class JSONReporter:
             })
             seen_types.add(test_type_base)
         
-        return {"test_cases": test_cases}
+        return {
+            "test_cases": test_cases,
+            "note": None
+        }
     
     def _test_case_coverage_summary(self, state: AgentState) -> Dict[str, Any]:
         """Test Case Coverage Summary - describes coverage achieved"""

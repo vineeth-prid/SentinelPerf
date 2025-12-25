@@ -488,3 +488,99 @@ class TestGenerator:
             thresholds=thresholds,
             headers=self.auth_headers,
         )
+    
+    def generate_autoscale_test(
+        self,
+        endpoints: List[Dict[str, Any]],
+        initial_vus: int = 10,
+        max_vus: int = 1000,
+        step_vus: int = 100,
+        step_duration: str = "30s",
+        ramp_duration: str = "10s",
+    ) -> TestScript:
+        """
+        Generate auto-scaling load test with staged ramp execution.
+        
+        Purpose: Ramp load from initial to max VUs in stages,
+        allowing breaking point detection at each level.
+        
+        Example with max_vus=1000, step_vus=100:
+        - Stage 1: 10 VUs (initial)
+        - Stage 2: 100 VUs  
+        - Stage 3: 200 VUs
+        - ...
+        - Stage N: 1000 VUs (max)
+        
+        Each stage holds for step_duration, with ramp_duration transitions.
+        """
+        # Create auto-scale config
+        config = AutoScaleConfig(
+            initial_vus=initial_vus,
+            max_vus=max_vus,
+            step_vus=step_vus,
+            step_duration=step_duration,
+            ramp_duration=ramp_duration,
+        )
+        
+        stages = config.generate_stages()
+        stage_vus_list = config.get_stage_vus_list()
+        
+        # Lenient thresholds - we expect failures during scaling
+        thresholds = {
+            "http_req_failed": ["rate<0.5"],  # Allow up to 50% failures
+            "http_req_duration": ["p(95)<15000"],  # 15s during stress
+        }
+        
+        return TestScript(
+            test_type=TestType.AUTOSCALE,
+            name="autoscale_test",
+            base_url=self.base_url,
+            endpoints=self._parse_endpoints(endpoints),
+            stages=stages,
+            thresholds=thresholds,
+            headers=self.auth_headers,
+            configured_max_vus=max_vus,
+            stage_vus_list=stage_vus_list,
+        )
+    
+    def generate_stress_test_staged(
+        self,
+        endpoints: List[Dict[str, Any]],
+        start_vus: int = 1,
+        max_vus: int = 50,
+        step_vus: int = 10,
+        step_duration: str = "30s",
+    ) -> TestScript:
+        """
+        Generate stress test with proper staged execution.
+        
+        This replaces the fixed VU approach with staged ramp.
+        """
+        # Use AutoScaleConfig for consistent stage generation
+        config = AutoScaleConfig(
+            initial_vus=start_vus,
+            max_vus=max_vus,
+            step_vus=step_vus,
+            step_duration=step_duration,
+            ramp_duration="5s",
+        )
+        
+        stages = config.generate_stages()
+        stage_vus_list = config.get_stage_vus_list()
+        
+        thresholds = {
+            "http_req_failed": ["rate<0.5"],
+            "http_req_duration": ["p(95)<10000"],
+        }
+        
+        return TestScript(
+            test_type=TestType.STRESS,
+            name="stress_test",
+            base_url=self.base_url,
+            endpoints=self._parse_endpoints(endpoints),
+            stages=stages,
+            thresholds=thresholds,
+            headers=self.auth_headers,
+            configured_max_vus=max_vus,
+            stage_vus_list=stage_vus_list,
+        )

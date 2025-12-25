@@ -220,17 +220,29 @@ class SentinelPerfAgent:
             recommendations=d.get("recommendations"),
             infra_saturation=d.get("infra_saturation"),
             errors=d.get("errors", []),
+            # Execution identity
+            execution_id=d.get("execution_id", ""),
+            config_file_path=d.get("config_file_path", ""),
+            autoscaling_enabled=d.get("autoscaling_enabled", False),
+            # Load execution tracking
+            configured_max_vus=d.get("configured_max_vus", 0),
+            achieved_max_vus=d.get("achieved_max_vus", 0),
+            early_stop_reason=d.get("early_stop_reason"),
+            planned_vus_stages=d.get("planned_vus_stages", []),
+            executed_vus_stages=d.get("executed_vus_stages", []),
+            # Report tracking
+            report_generated=d.get("report_generated", False),
         )
         
         if d.get("started_at"):
             if isinstance(d["started_at"], str):
-                state.started_at = datetime.fromisoformat(d["started_at"])
+                state.started_at = datetime.fromisoformat(d["started_at"].replace('Z', '+00:00'))
             else:
                 state.started_at = d["started_at"]
         
         if d.get("completed_at"):
             if isinstance(d["completed_at"], str):
-                state.completed_at = datetime.fromisoformat(d["completed_at"])
+                state.completed_at = datetime.fromisoformat(d["completed_at"].replace('Z', '+00:00'))
             else:
                 state.completed_at = d["completed_at"]
         

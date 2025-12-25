@@ -1,7 +1,7 @@
 """k6 test script generator for SentinelPerf"""
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from enum import Enum
 from datetime import datetime
 
@@ -14,6 +14,7 @@ class TestType(str, Enum):
     ADAPTIVE = "adaptive"  # Adaptive VU escalation
     SUSTAINED = "sustained"  # Long duration moderate load
     RECOVERY = "recovery"  # Push past breaking, observe recovery
+    AUTOSCALE = "autoscale"  # Auto-scaling staged ramp
 
 
 @dataclass
@@ -33,6 +34,53 @@ class TestEndpoint:
 
 
 @dataclass
+class AutoScaleConfig:
+    """Configuration for auto-scaling load test"""
+    initial_vus: int = 10
+    max_vus: int = 1000
+    step_vus: int = 100  # VU increment per stage
+    step_duration: str = "30s"  # Duration per stage
+    ramp_duration: str = "10s"  # Ramp between stages
+    
+    def generate_stages(self) -> List[Dict[str, Any]]:
+        """Generate k6 stages for auto-scaling"""
+        stages = []
+        current_vus = self.initial_vus
+        
+        # Initial ramp to starting VUs
+        stages.append({"duration": self.ramp_duration, "target": self.initial_vus})
+        
+        # Incremental stages
+        while current_vus <= self.max_vus:
+            # Hold at current level
+            stages.append({"duration": self.step_duration, "target": current_vus})
+            
+            if current_vus >= self.max_vus:
+                break
+            
+            # Ramp to next level
+            next_vus = min(current_vus + self.step_vus, self.max_vus)
+            stages.append({"duration": self.ramp_duration, "target": next_vus})
+            current_vus = next_vus
+        
+        # Ramp down
+        stages.append({"duration": "10s", "target": 0})
+        
+        return stages
+    
+    def get_stage_vus_list(self) -> List[int]:
+        """Get list of VU levels that will be executed"""
+        vus_list = []
+        current = self.initial_vus
+        while current <= self.max_vus:
+            vus_list.append(current)
+            if current >= self.max_vus:
+                break
+            current = min(current + self.step_vus, self.max_vus)
+        return vus_list
+
+
+@dataclass
 class TestScript:
     """Generated k6 test script"""
     test_type: TestType
@@ -42,6 +90,10 @@ class TestScript:
     stages: List[Any]  # Can be TestStage or dict
     thresholds: Dict[str, List[str]]
     headers: Dict[str, str] = field(default_factory=dict)
+    
+    # Auto-scale tracking
+    configured_max_vus: int = 0  # What was configured
+    stage_vus_list: List[int] = field(default_factory=list)  # VU levels to execute
     
     def to_k6_script(self) -> str:
         """Generate deterministic k6 JavaScript test script"""

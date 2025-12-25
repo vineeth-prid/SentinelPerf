@@ -108,10 +108,72 @@ class MarkdownReporter:
         return "\n".join(summary_lines)
     
     def _infra_saturation_section(self, state: AgentState) -> str:
-        """Infrastructure Saturation section - only rendered if data exists"""
-        if not state.infra_saturation:
-            return ""
+        """Infrastructure Saturation section - ALWAYS rendered"""
+        lines = [
+            "## Infrastructure Metrics",
+            "",
+        ]
         
+        infra = state.infra_saturation
+        
+        # Check if data is available
+        if not infra or not infra.get("data_available", False):
+            # Check for legacy format (pre_test/post_test only)
+            if infra and (infra.get("pre_test") or infra.get("post_test")):
+                return self._infra_saturation_section_legacy(state)
+            
+            lines.extend([
+                "*Infrastructure metrics not captured during this test run.*",
+                "",
+                "To enable infrastructure monitoring, ensure the test environment supports /proc filesystem access.",
+            ])
+            return "\n".join(lines)
+        
+        # Render timeline table
+        snapshots = infra.get("snapshots", [])
+        warnings = infra.get("warnings", [])
+        confidence_penalty = infra.get("confidence_penalty", 0)
+        
+        lines.extend([
+            "### Resource Usage by Load Phase",
+            "",
+            "| Load Phase | VUs | CPU% | Memory% | Notes |",
+            "|------------|-----|------|---------|-------|",
+        ])
+        
+        for snap in snapshots:
+            phase = snap.get("phase", "unknown").replace("_", " ").title()
+            vus = snap.get("vus", 0)
+            cpu = snap.get("cpu_percent", 0)
+            mem = snap.get("memory_percent", 0)
+            notes = snap.get("notes", "")
+            saturated = snap.get("saturated", False)
+            
+            # Add warning indicator if saturated
+            if saturated:
+                notes = f"⚠️ {notes}" if notes else "⚠️ Saturated"
+            
+            lines.append(f"| {phase} | {vus} | {cpu:.1f}% | {mem:.1f}% | {notes} |")
+        
+        # Warnings section
+        if warnings:
+            lines.extend([
+                "",
+                "### Warnings",
+                "",
+            ])
+            for w in warnings:
+                lines.append(f"- ⚠️ {w}")
+        
+        # Confidence penalty
+        if confidence_penalty > 0:
+            lines.append("")
+            lines.append(f"**Confidence penalty applied:** -{confidence_penalty*100:.0f}%")
+        
+        return "\n".join(lines)
+    
+    def _infra_saturation_section_legacy(self, state: AgentState) -> str:
+        """Legacy format for backward compatibility (pre_test/post_test only)"""
         infra = state.infra_saturation
         pre = infra.get("pre_test", {})
         post = infra.get("post_test", {})
@@ -119,14 +181,14 @@ class MarkdownReporter:
         confidence_penalty = infra.get("confidence_penalty", 0)
         
         lines = [
-            "## Infrastructure Saturation",
+            "## Infrastructure Metrics",
             "",
-            "### Pre-test vs Post-test Resource Usage",
+            "### Resource Usage by Load Phase",
             "",
-            "| Phase | CPU | Memory |",
-            "|-------|-----|--------|",
-            f"| Pre-test | {pre.get('cpu_percent', 0):.1f}% | {pre.get('memory_percent', 0):.1f}% |",
-            f"| Post-test | {post.get('cpu_percent', 0):.1f}% | {post.get('memory_percent', 0):.1f}% |",
+            "| Load Phase | VUs | CPU% | Memory% | Notes |",
+            "|------------|-----|------|---------|-------|",
+            f"| Pre-test | 0 | {pre.get('cpu_percent', 0):.1f}% | {pre.get('memory_percent', 0):.1f}% | {'⚠️ Saturated' if pre.get('saturated') else 'Normal'} |",
+            f"| Post-test | - | {post.get('cpu_percent', 0):.1f}% | {post.get('memory_percent', 0):.1f}% | {'⚠️ Saturated' if post.get('saturated') else 'Normal'} |",
         ]
         
         if warnings:

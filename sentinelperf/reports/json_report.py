@@ -356,14 +356,6 @@ class JSONReporter:
             "instability_note": instability_note,
             "total_endpoints_tested": len(endpoints),
         }
-        
-        return {
-            "api_telemetry_available": has_api_telemetry,
-            "note": None if has_api_telemetry else "API-level telemetry not available; summary inferred from load execution",
-            "apis_exercised": apis_exercised,
-            "apis_contributing_to_instability": instability_apis,
-            "total_endpoints_tested": len(endpoints),
-        }
     
     def _test_coverage_summary(self, state: AgentState) -> Dict[str, Any]:
         """Test coverage summary"""

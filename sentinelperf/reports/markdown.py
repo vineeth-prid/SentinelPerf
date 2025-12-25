@@ -220,6 +220,9 @@ Root cause analysis was not performed."""
         
         rc = state.root_cause
         
+        # Determine if this is a failure or no-failure case
+        is_failure = state.breaking_point and state.breaking_point.vus_at_break > 0
+        
         # Contributing factors
         factors = "\n".join([f"- {f}" for f in rc.contributing_factors]) \
             if rc.contributing_factors else "- None identified"
@@ -236,17 +239,36 @@ Root cause analysis was not performed."""
         model_info = f"**Model:** {rc.llm_model}" if rc.llm_model else ""
         latency_info = f" ({rc.llm_latency_ms:.0f}ms)" if rc.llm_latency_ms > 0 else ""
         
-        # Pattern section
+        # Pattern section - different heading based on failure status
         pattern_section = ""
         if rc.failure_pattern and rc.pattern_explanation:
-            pattern_display = rc.failure_pattern.replace("_", " ").title()
-            pattern_section = f"""
+            if is_failure:
+                pattern_display = rc.failure_pattern.replace("_", " ").title()
+                pattern_section = f"""
 
 ### Failure Pattern
 
 **Detected Pattern:** {pattern_display}
 
 {rc.pattern_explanation}"""
+            else:
+                pattern_section = f"""
+
+### Observed Behavior
+
+{rc.pattern_explanation}"""
+        
+        # Use different heading based on failure status
+        if is_failure:
+            cause_heading = "### Primary Cause"
+        else:
+            cause_heading = "### System Behavior Explanation"
+        
+        # Different contributing factors heading
+        if is_failure:
+            factors_heading = "### Contributing Factors"
+        else:
+            factors_heading = "### Observations"
         
         return f"""## Root Cause Analysis
 
@@ -258,11 +280,11 @@ Root cause analysis was not performed."""
 
 {rc.root_cause_summary}
 
-### Primary Cause
+{cause_heading}
 
 {rc.primary_cause}{pattern_section}
 
-### Contributing Factors
+{factors_heading}
 
 {factors}
 

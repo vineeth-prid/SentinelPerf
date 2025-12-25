@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 from dataclasses import asdict
 
@@ -27,8 +27,16 @@ class JSONReporter:
         """Generate JSON summary and return file path"""
         
         state = result.state
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        filename = f"sentinelperf_summary_{timestamp}.json"
+        
+        # Use execution start time for filename (REAL runtime, not reused)
+        if state.started_at:
+            timestamp = state.started_at.strftime("%Y%m%d_%H%M%S")
+        else:
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        
+        # Include execution ID in filename for uniqueness guarantee
+        exec_id_short = state.execution_id[:8] if state.execution_id else "unknown"
+        filename = f"sentinelperf_summary_{timestamp}_{exec_id_short}.json"
         filepath = self.output_dir / filename
         
         data = self._build_summary(state, result)

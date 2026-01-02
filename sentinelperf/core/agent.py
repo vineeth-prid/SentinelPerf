@@ -678,6 +678,41 @@ class SentinelPerfAgent:
                 # Set early stop reason if not max limit
                 if autoscale_result.stop_reason != "max_limit_reached":
                     state["early_stop_reason"] = autoscale_result.stop_reason
+                
+                # Build infra saturation data with timeline
+                if autoscale_result.infra_timeline:
+                    infra_snapshots = [point.to_dict() for point in autoscale_result.infra_timeline]
+                    infra_warnings = []
+                    
+                    # Add warnings for saturated stages
+                    for point in autoscale_result.infra_timeline:
+                        if point.saturated:
+                            if point.cpu_percent >= 85:
+                                infra_warnings.append(
+                                    f"High CPU usage ({point.cpu_percent:.0f}%) at {point.vus} VUs"
+                                )
+                            if point.memory_percent >= 90:
+                                infra_warnings.append(
+                                    f"High memory usage ({point.memory_percent:.0f}%) at {point.vus} VUs"
+                                )
+                    
+                    # Calculate confidence penalty ONLY if saturation occurred near breaking point
+                    confidence_penalty = 0.0
+                    if autoscale_result.infra_saturated_at_break:
+                        # Apply penalty only when infra saturation coincides with breaking point
+                        confidence_penalty = 0.15
+                        infra_warnings.append(
+                            f"⚠ Infrastructure saturation detected at breaking point ({autoscale_result.breaking_point_vus} VUs)"
+                        )
+                    
+                    state["infra_saturation"] = {
+                        "data_available": True,
+                        "snapshots": infra_snapshots,
+                        "warnings": infra_warnings,
+                        "confidence_penalty": confidence_penalty,
+                        "saturated_at_break": autoscale_result.infra_saturated_at_break,
+                        "breaking_point_vus": autoscale_result.breaking_point_vus,
+                    }
             
             state["load_results"] = load_results
             

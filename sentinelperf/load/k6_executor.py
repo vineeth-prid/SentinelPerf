@@ -124,6 +124,16 @@ class K6Result:
         )
 
 
+@dataclass
+class AutoScaleResult:
+    """Results from auto-scaling stress test execution"""
+    results: List[K6Result]
+    max_vus_attempted: int
+    max_vus_reached: int
+    stop_reason: str
+    executed_stages: List[int]
+
+
 class K6Executor:
     """
     Executes k6 load tests.

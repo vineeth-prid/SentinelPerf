@@ -105,7 +105,7 @@ class MarkdownReporter:
 
 ---"""
     
-    def _execution_proof_section(self, state: AgentState) -> str:
+    def _execution_proof_section(self, state: AgentState, result: ExecutionResult = None) -> str:
         """Execution Proof section - proves this report is from a real execution"""
         started = state.started_at.isoformat() if state.started_at else "N/A"
         completed = state.completed_at.isoformat() if state.completed_at else "N/A"
@@ -115,16 +115,29 @@ class MarkdownReporter:
         if actual_max_vus == 0 and state.load_results:
             actual_max_vus = max((r.vus for r in state.load_results), default=0)
         
+        # Get execution metrics if result available
+        if result:
+            exec_status = result.get_execution_status().value
+            test_count = result.get_test_case_count()
+            stop_reason = result.get_stop_reason()
+        else:
+            exec_status = "UNKNOWN"
+            test_count = len(state.load_results) if state.load_results else 0
+            stop_reason = state.execution_stop_reason or state.early_stop_reason or "N/A"
+        
         return f"""## Execution Proof
 
 | Property | Value |
 |----------|-------|
 | Execution ID | `{state.execution_id or 'N/A'}` |
+| Execution Status | **{exec_status}** |
 | Started At | {started} |
 | Completed At | {completed} |
 | Config File | `{state.config_file_path or 'N/A'}` |
 | Environment | {state.environment} |
-| Max VUs ACTUALLY EXECUTED | **{actual_max_vus}** |
+| Tests Executed | **{test_count}** |
+| Max VUs ACTUALLY REACHED | **{actual_max_vus}** |
+| Stop Reason | {stop_reason} |
 | Autoscaling Enabled | {state.autoscaling_enabled} |"""
 
     def _executive_summary(self, state: AgentState, result: ExecutionResult) -> str:

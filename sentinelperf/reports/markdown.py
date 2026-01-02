@@ -60,9 +60,9 @@ class MarkdownReporter:
         # 13. Methodology
         # 14. Appendix
         sections = [
-            self._header(state),
+            self._header(state, result),
             self._executive_summary(state, result),
-            self._execution_proof_section(state),
+            self._execution_proof_section(state, result),
             self._test_case_summary_section(state),
             self._test_case_coverage_summary_section(state),
             self._api_trigger_summary_section(state),

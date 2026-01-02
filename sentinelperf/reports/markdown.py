@@ -223,27 +223,73 @@ class MarkdownReporter:
         snapshots = infra.get("snapshots", [])
         warnings = infra.get("warnings", [])
         confidence_penalty = infra.get("confidence_penalty", 0)
+        saturated_at_break = infra.get("saturated_at_break", False)
+        breaking_point_vus = infra.get("breaking_point_vus", 0)
         
-        lines.extend([
-            "### Resource Usage by Load Phase",
-            "",
-            "| Load Phase | VUs | CPU% | Memory% | Notes |",
-            "|------------|-----|------|---------|-------|",
-        ])
+        # Check if snapshots have RPS/latency (new format) or just phase (old format)
+        has_load_metrics = snapshots and "rps" in snapshots[0]
         
-        for snap in snapshots:
-            phase = snap.get("phase", "unknown").replace("_", " ").title()
-            vus = snap.get("vus", 0)
-            cpu = snap.get("cpu_percent", 0)
-            mem = snap.get("memory_percent", 0)
-            notes = snap.get("notes", "")
-            saturated = snap.get("saturated", False)
+        if has_load_metrics:
+            # New format with VU correlation
+            lines.extend([
+                "### Resource Usage by VU Level",
+                "",
+                "| VUs | CPU% | Memory% | RPS | P95 Latency | Error Rate | Status |",
+                "|-----|------|---------|-----|-------------|------------|--------|",
+            ])
             
-            # Add warning indicator if saturated
-            if saturated:
-                notes = f"⚠️ {notes}" if notes else "⚠️ Saturated"
+            for snap in snapshots:
+                vus = snap.get("vus", 0)
+                cpu = snap.get("cpu_percent", 0)
+                mem = snap.get("memory_percent", 0)
+                rps = snap.get("rps", 0)
+                latency = snap.get("latency_p95_ms", 0)
+                error_rate = snap.get("error_rate", 0)
+                saturated = snap.get("saturated", False)
+                
+                # Determine status
+                if saturated:
+                    status = "⚠️ Saturated"
+                elif error_rate >= 0.05:
+                    status = "⚠️ High errors"
+                elif latency >= 5000:
+                    status = "⚠️ High latency"
+                else:
+                    status = "✓ Normal"
+                
+                lines.append(
+                    f"| {vus} | {cpu:.1f}% | {mem:.1f}% | {rps:.1f} | {latency:.0f}ms | {error_rate:.1%} | {status} |"
+                )
+        else:
+            # Old format with phase names
+            lines.extend([
+                "### Resource Usage by Load Phase",
+                "",
+                "| Load Phase | VUs | CPU% | Memory% | Notes |",
+                "|------------|-----|------|---------|-------|",
+            ])
             
-            lines.append(f"| {phase} | {vus} | {cpu:.1f}% | {mem:.1f}% | {notes} |")
+            for snap in snapshots:
+                phase = snap.get("phase", "unknown").replace("_", " ").title()
+                vus = snap.get("vus", 0)
+                cpu = snap.get("cpu_percent", 0)
+                mem = snap.get("memory_percent", 0)
+                notes = snap.get("notes", "")
+                saturated = snap.get("saturated", False)
+                
+                if saturated:
+                    notes = f"⚠️ {notes}" if notes else "⚠️ Saturated"
+                
+                lines.append(f"| {phase} | {vus} | {cpu:.1f}% | {mem:.1f}% | {notes} |")
+        
+        # Saturation at breaking point note
+        if saturated_at_break:
+            lines.extend([
+                "",
+                f"**⚠️ Infrastructure saturation detected at breaking point ({breaking_point_vus} VUs)**",
+                "",
+                "This may indicate that the breaking point was caused or influenced by infrastructure limits rather than application limits.",
+            ])
         
         # Warnings section
         if warnings:
@@ -253,11 +299,14 @@ class MarkdownReporter:
                 "",
             ])
             for w in warnings:
-                lines.append(f"- ⚠️ {w}")
+                lines.append(f"- {w}")
         
         # Confidence penalty
         if confidence_penalty > 0:
             lines.append("")
+            lines.append(f"**Confidence penalty applied:** -{confidence_penalty*100:.0f}%")
+        
+        return "\n".join(lines)
             lines.append(f"**Confidence penalty applied:** -{confidence_penalty*100:.0f}%")
         
         return "\n".join(lines)

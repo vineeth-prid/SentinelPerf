@@ -54,9 +54,26 @@ class JSONReporter:
         if actual_max_vus == 0 and state.load_results:
             actual_max_vus = max((r.vus for r in state.load_results), default=0)
         
+        # Get execution status using the new system
+        exec_status = result.get_execution_status()
+        test_count = result.get_test_case_count()
+        max_vus = result.get_max_vus_reached()
+        stop_reason = result.get_stop_reason()
+        
         summary = {
             "version": "1.0",
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            
+            # New execution status (clear, unambiguous)
+            "execution_status": exec_status.value,
+            "execution_summary": {
+                "status": exec_status.value,
+                "tests_executed": test_count,
+                "max_vus_reached": max_vus,
+                "stop_reason": stop_reason,
+            },
+            
+            # Keep old status field for backwards compatibility (DO NOT change exit codes)
             "status": "success" if result.success else "failure",
             
             # Execution Proof - MANDATORY section for execution integrity

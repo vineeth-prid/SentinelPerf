@@ -21,6 +21,19 @@ class AgentPhase(str, Enum):
     ERROR = "error"
 
 
+class ExecutionStatus(str, Enum):
+    """
+    Clear execution status for CLI output.
+    
+    SUCCESS: Tests ran, reports generated, no issues
+    SUCCESS_WITH_WARNINGS: Tests ran, reports generated, but confidence reduced
+    FAILED_TO_EXECUTE: Tests could not run or reports could not be generated
+    """
+    SUCCESS = "SUCCESS"
+    SUCCESS_WITH_WARNINGS = "SUCCESS_WITH_WARNINGS"
+    FAILED_TO_EXECUTE = "FAILED_TO_EXECUTE"
+
+
 @dataclass
 class TelemetryInsight:
     """Insights derived from telemetry data"""
@@ -172,6 +185,10 @@ class AgentState:
     # Report generation tracking
     report_generated: bool = False
     
+    # Execution status tracking
+    execution_status: Optional[str] = None  # ExecutionStatus value
+    execution_stop_reason: Optional[str] = None  # Human-readable stop reason
+    
     def add_error(self, error: str) -> None:
         """Add an error to the state"""
         self.errors.append(error)
@@ -192,15 +209,95 @@ class ExecutionResult:
     markdown_report_path: Optional[str] = None
     json_report_path: Optional[str] = None
     
+    def get_execution_status(self) -> ExecutionStatus:
+        """
+        Determine execution status based on state.
+        
+        SUCCESS: Tests ran, reports generated, no confidence reduction
+        SUCCESS_WITH_WARNINGS: Tests ran, reports generated, but confidence reduced
+        FAILED_TO_EXECUTE: Tests could not run or reports could not be generated
+        """
+        # If report wasn't generated, execution failed
+        if not self.state.report_generated:
+            return ExecutionStatus.FAILED_TO_EXECUTE
+        
+        # If phase is ERROR, execution failed
+        if self.state.phase == AgentPhase.ERROR:
+            return ExecutionStatus.FAILED_TO_EXECUTE
+        
+        # Check for warnings that reduce confidence
+        has_warnings = False
+        
+        # Infrastructure saturation reduces confidence
+        if self.state.infra_saturation:
+            if self.state.infra_saturation.get("confidence_penalty", 0) > 0:
+                has_warnings = True
+            if self.state.infra_saturation.get("saturated_at_break", False):
+                has_warnings = True
+        
+        # Root cause analysis confidence below 0.5 is a warning
+        if self.state.root_cause and self.state.root_cause.confidence < 0.5:
+            has_warnings = True
+        
+        # LLM mode fallback to rules is a warning
+        if self.state.root_cause and self.state.root_cause.llm_mode == "rules":
+            has_warnings = True
+        
+        # Errors during execution (but still completed) are warnings
+        if self.state.errors:
+            has_warnings = True
+        
+        return ExecutionStatus.SUCCESS_WITH_WARNINGS if has_warnings else ExecutionStatus.SUCCESS
+    
+    def get_test_case_count(self) -> int:
+        """Get total number of test cases executed"""
+        return len(self.state.load_results)
+    
+    def get_max_vus_reached(self) -> int:
+        """Get the maximum VUs actually reached during execution"""
+        if self.state.achieved_max_vus > 0:
+            return self.state.achieved_max_vus
+        if self.state.load_results:
+            return max((r.vus for r in self.state.load_results), default=0)
+        return 0
+    
+    def get_stop_reason(self) -> str:
+        """Get human-readable reason why execution stopped"""
+        # Use explicit stop reason if set
+        if self.state.execution_stop_reason:
+            return self.state.execution_stop_reason
+        
+        # Derive from early_stop_reason
+        if self.state.early_stop_reason:
+            reason_map = {
+                "error_rate_exceeded": "Breaking point detected (error rate threshold exceeded)",
+                "latency_exceeded": "Breaking point detected (latency threshold exceeded)",
+                "throughput_degradation": "Breaking point detected (throughput degradation)",
+                "max_limit_reached": "Configured maximum VUs reached",
+            }
+            return reason_map.get(self.state.early_stop_reason, self.state.early_stop_reason)
+        
+        # Check if max VUs was reached
+        if self.state.configured_max_vus > 0:
+            if self.get_max_vus_reached() >= self.state.configured_max_vus:
+                return "Configured maximum VUs reached"
+        
+        # Default: completed all planned tests
+        return "All planned test stages completed"
+    
     @property
     def console_summary(self) -> str:
         """Generate max 5-line console summary"""
         lines = []
         
-        if self.success:
+        status = self.get_execution_status()
+        
+        if status == ExecutionStatus.SUCCESS:
             lines.append(f"✓ SentinelPerf analysis complete for {self.state.target_url}")
+        elif status == ExecutionStatus.SUCCESS_WITH_WARNINGS:
+            lines.append(f"⚠ SentinelPerf analysis complete (with warnings) for {self.state.target_url}")
         else:
-            lines.append(f"✗ SentinelPerf analysis failed for {self.state.target_url}")
+            lines.append(f"✗ SentinelPerf execution failed for {self.state.target_url}")
         
         if self.state.breaking_point:
             bp = self.state.breaking_point

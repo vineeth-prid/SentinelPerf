@@ -125,6 +125,31 @@ class K6Result:
 
 
 @dataclass
+class InfraMetricPoint:
+    """Infrastructure metrics at a specific VU level"""
+    vus: int
+    cpu_percent: float
+    memory_percent: float
+    rps: float = 0.0
+    latency_p95_ms: float = 0.0
+    error_rate: float = 0.0
+    saturated: bool = False
+    timestamp: str = ""
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "vus": self.vus,
+            "cpu_percent": self.cpu_percent,
+            "memory_percent": self.memory_percent,
+            "rps": self.rps,
+            "latency_p95_ms": self.latency_p95_ms,
+            "error_rate": self.error_rate,
+            "saturated": self.saturated,
+            "timestamp": self.timestamp,
+        }
+
+
+@dataclass
 class AutoScaleResult:
     """Results from auto-scaling stress test execution"""
     results: List[K6Result]
@@ -132,6 +157,12 @@ class AutoScaleResult:
     max_vus_reached: int
     stop_reason: str
     executed_stages: List[int]
+    # Infra timeline - metrics at each VU increment
+    infra_timeline: List[InfraMetricPoint] = field(default_factory=list)
+    # Breaking point VUs (if detected near infra saturation)
+    breaking_point_vus: int = 0
+    # Whether infra saturation occurred near breaking point
+    infra_saturated_at_break: bool = False
 
 
 class K6Executor:

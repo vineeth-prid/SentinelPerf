@@ -374,6 +374,139 @@ class K6Executor:
         
         return results
     
+    def execute_autoscale_stress(
+        self,
+        script: TestScript,
+        initial_vus: int,
+        max_vus_limit: int = 1000,
+        step_vus: int = 50,
+        step_duration_seconds: int = 30,
+        error_threshold: float = 0.05,
+        latency_p95_threshold_ms: float = 5000,
+        timeout_per_step: int = 120,
+        verbose: bool = False,
+    ) -> "AutoScaleResult":
+        """
+        Execute auto-scaling stress test with breaking point detection.
+        
+        Incrementally increases VUs until:
+        - breaking point is detected (error_threshold OR latency_threshold)
+        - max_vus_limit is reached
+        - infra saturation is detected
+        
+        Each increment executes a REAL k6 stage.
+        
+        Args:
+            script: Base TestScript with endpoints and config
+            initial_vus: Starting VU count
+            max_vus_limit: Maximum VUs to attempt (default 1000)
+            step_vus: VU increment per stage (e.g., +50 or +100)
+            step_duration_seconds: Duration to hold each stage
+            error_threshold: Stop if error rate exceeds this (default 0.05 = 5%)
+            latency_p95_threshold_ms: Stop if P95 latency exceeds this
+            timeout_per_step: Timeout per k6 execution
+            verbose: Print progress
+            
+        Returns:
+            AutoScaleResult with all execution data
+        """
+        from sentinelperf.load.generator import TestType
+        
+        results = []
+        current_vus = initial_vus
+        max_vus_attempted = initial_vus
+        max_vus_reached = 0
+        stop_reason = None
+        executed_stages = []
+        
+        if verbose:
+            print(f"  Auto-scale stress: {initial_vus} → {max_vus_limit} VUs (step={step_vus})")
+        
+        iteration = 0
+        while current_vus <= max_vus_limit and stop_reason is None:
+            iteration += 1
+            max_vus_attempted = current_vus
+            
+            # Create single-stage script for this VU level
+            stage_script = TestScript(
+                test_type=TestType.STRESS,
+                name=f"autoscale_stage_{current_vus}vus",
+                base_url=script.base_url,
+                endpoints=script.endpoints,
+                stages=[
+                    {"duration": "5s", "target": current_vus},  # Ramp up
+                    {"duration": f"{step_duration_seconds}s", "target": current_vus},  # Hold
+                ],
+                thresholds=script.thresholds,
+                headers=script.headers,
+            )
+            
+            if verbose:
+                print(f"    Stage {iteration}: {current_vus} VUs...")
+            
+            # Execute this stage - REAL k6 execution
+            result = self.execute(stage_script, timeout_per_step, verbose=False)
+            result.test_type = f"autoscale_{current_vus}vus"
+            results.append(result)
+            executed_stages.append(current_vus)
+            
+            # Capture metrics
+            error_rate = result.metrics.error_rate
+            latency_p95 = result.metrics.latency_p95
+            rps = result.metrics.requests_per_second
+            
+            if verbose:
+                print(f"      → P95: {latency_p95:.0f}ms, "
+                      f"Error: {error_rate:.1%}, "
+                      f"RPS: {rps:.1f}")
+            
+            # Check for breaking point: ERROR THRESHOLD
+            if error_rate >= error_threshold:
+                stop_reason = "breaking_point_error"
+                if verbose:
+                    print(f"    ✗ Breaking point: Error rate {error_rate:.1%} >= {error_threshold:.1%} at {current_vus} VUs")
+                break
+            
+            # Check for breaking point: LATENCY THRESHOLD
+            if latency_p95 >= latency_p95_threshold_ms:
+                stop_reason = "breaking_point_latency"
+                if verbose:
+                    print(f"    ✗ Breaking point: Latency P95 {latency_p95:.0f}ms >= {latency_p95_threshold_ms:.0f}ms at {current_vus} VUs")
+                break
+            
+            # Check for k6 execution failure
+            if not result.success and result.exit_code != 0:
+                stop_reason = "execution_failure"
+                if verbose:
+                    print(f"    ✗ Execution failed at {current_vus} VUs")
+                break
+            
+            # Stage completed successfully
+            max_vus_reached = current_vus
+            
+            # Increment for next stage
+            current_vus += step_vus
+        
+        # Determine final stop reason
+        if stop_reason is None:
+            if current_vus > max_vus_limit:
+                stop_reason = "max_limit_reached"
+                if verbose:
+                    print(f"    ✓ Reached max limit: {max_vus_limit} VUs")
+        
+        if verbose:
+            print(f"  Auto-scale complete: {len(results)} stages, "
+                  f"max reached: {max_vus_reached} VUs, "
+                  f"reason: {stop_reason}")
+        
+        return AutoScaleResult(
+            results=results,
+            max_vus_attempted=max_vus_attempted,
+            max_vus_reached=max_vus_reached,
+            stop_reason=stop_reason or "unknown",
+            executed_stages=executed_stages,
+        )
+    
     def execute_adaptive(
         self,
         script: TestScript,

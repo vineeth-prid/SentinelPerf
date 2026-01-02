@@ -78,10 +78,21 @@ class MarkdownReporter:
         
         return "\n\n".join(filter(None, sections))
     
-    def _header(self, state: AgentState) -> str:
-        """Report header with execution timestamps"""
+    def _header(self, state: AgentState, result: ExecutionResult = None) -> str:
+        """Report header with execution timestamps and status"""
         started = state.started_at.strftime("%Y-%m-%d %H:%M:%S UTC") if state.started_at else "N/A"
         completed = state.completed_at.strftime("%Y-%m-%d %H:%M:%S UTC") if state.completed_at else "N/A"
+        
+        # Get execution status if result available
+        if result:
+            exec_status = result.get_execution_status()
+            status_display = {
+                "SUCCESS": "✅ SUCCESS",
+                "SUCCESS_WITH_WARNINGS": "⚠️ SUCCESS_WITH_WARNINGS",
+                "FAILED_TO_EXECUTE": "❌ FAILED_TO_EXECUTE",
+            }.get(exec_status.value, exec_status.value)
+        else:
+            status_display = '✅ Complete' if state.phase.value == 'complete' else '⚠️ ' + state.phase.value
         
         return f"""# SentinelPerf Analysis Report
 
@@ -90,7 +101,7 @@ class MarkdownReporter:
 **Execution ID:** `{state.execution_id or 'N/A'}`  
 **Started:** {started}  
 **Completed:** {completed}  
-**Status:** {'✅ Complete' if state.phase.value == 'complete' else '⚠️ ' + state.phase.value}
+**Status:** {status_display}
 
 ---"""
     

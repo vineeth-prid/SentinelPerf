@@ -159,6 +159,8 @@ class SentinelPerfAgent:
             "planned_vus_stages": [],
             "executed_vus_stages": [],
             "report_generated": False,
+            "execution_status": None,
+            "execution_stop_reason": None,
         }
         
         if self.verbose:
@@ -232,6 +234,9 @@ class SentinelPerfAgent:
             executed_vus_stages=d.get("executed_vus_stages", []),
             # Report tracking
             report_generated=d.get("report_generated", False),
+            # Execution status
+            execution_status=d.get("execution_status"),
+            execution_stop_reason=d.get("execution_stop_reason"),
         )
         
         if d.get("started_at"):
@@ -1259,18 +1264,40 @@ class SentinelPerfAgent:
     
     def _generate_summary(self, state: AgentState) -> str:
         """Generate execution summary"""
-        if state.phase == AgentPhase.COMPLETE:
-            summary_parts = [f"Analysis complete for {state.target_url}"]
-            
-            if self._baseline:
-                summary_parts.append(
-                    f"Baseline: {self._baseline.global_avg_rps:.1f} RPS, "
-                    f"P95: {self._baseline.global_latency_p95:.0f}ms"
-                )
-            
-            return " | ".join(summary_parts)
-            
-        elif state.phase == AgentPhase.ERROR:
-            return f"Analysis failed: {', '.join(state.errors)}"
+        from sentinelperf.core.state import ExecutionStatus
+        
+        # Build a temporary result to get execution status
+        temp_result = ExecutionResult(
+            success=state.phase == AgentPhase.COMPLETE,
+            state=state,
+            summary="",
+        )
+        exec_status = temp_result.get_execution_status()
+        
+        if exec_status == ExecutionStatus.SUCCESS:
+            summary_parts = [f"SUCCESS: Analysis complete for {state.target_url}"]
+        elif exec_status == ExecutionStatus.SUCCESS_WITH_WARNINGS:
+            summary_parts = [f"SUCCESS_WITH_WARNINGS: Analysis complete for {state.target_url}"]
         else:
-            return f"Analysis interrupted at phase: {state.phase.value}"
+            summary_parts = [f"FAILED_TO_EXECUTE: Analysis failed for {state.target_url}"]
+            if state.errors:
+                summary_parts.append(f"Errors: {', '.join(state.errors[:2])}")
+            return " | ".join(summary_parts)
+        
+        # Add test execution summary
+        test_count = temp_result.get_test_case_count()
+        max_vus = temp_result.get_max_vus_reached()
+        summary_parts.append(f"Tests: {test_count}, Max VUs: {max_vus}")
+        
+        # Add baseline info if available
+        if self._baseline:
+            summary_parts.append(
+                f"Baseline: {self._baseline.global_avg_rps:.1f} RPS, "
+                f"P95: {self._baseline.global_latency_p95:.0f}ms"
+            )
+        
+        # Add stop reason
+        stop_reason = temp_result.get_stop_reason()
+        summary_parts.append(f"Stopped: {stop_reason}")
+        
+        return " | ".join(summary_parts)

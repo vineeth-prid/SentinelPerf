@@ -584,7 +584,7 @@ class SentinelPerfAgent:
             # Check if adaptive mode is enabled OR use autoscale stress by default
             if self.config.load.adaptive_enabled:
                 if self.verbose:
-                    print(f"  Adaptive mode enabled")
+                    print("  Adaptive mode enabled")
                 
                 # Use first script as template for adaptive execution
                 template_script = self._generated_scripts[0]

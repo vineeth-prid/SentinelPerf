@@ -1227,6 +1227,27 @@ class SentinelPerfAgent:
             actual_max_vus = max((r.vus for r in state["load_results"]), default=0)
             state["achieved_max_vus"] = actual_max_vus
         
+        # Set execution stop reason based on state
+        if not state.get("execution_stop_reason"):
+            if state.get("early_stop_reason"):
+                reason_map = {
+                    "error_rate_exceeded": "Breaking point detected (error rate threshold exceeded)",
+                    "latency_exceeded": "Breaking point detected (latency threshold exceeded)",
+                    "throughput_degradation": "Breaking point detected (throughput degradation)",
+                    "max_limit_reached": "Configured maximum VUs reached",
+                }
+                state["execution_stop_reason"] = reason_map.get(
+                    state["early_stop_reason"], 
+                    state["early_stop_reason"]
+                )
+            elif state.get("configured_max_vus", 0) > 0:
+                if state.get("achieved_max_vus", 0) >= state["configured_max_vus"]:
+                    state["execution_stop_reason"] = "Configured maximum VUs reached"
+                else:
+                    state["execution_stop_reason"] = "All planned test stages completed"
+            else:
+                state["execution_stop_reason"] = "All planned test stages completed"
+        
         # Convert to AgentState for report generation
         agent_state = self._dict_to_agent_state(state)
         

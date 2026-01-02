@@ -5,70 +5,54 @@ SentinelPerf AI is a CLI-first, autonomous performance engineering agent.
 
 ## Test Status: ✅ ALL PASSED
 
-### Execution Integrity Implementation (2024-12-25) ✅
+### Auto-Scale Stress Execution Bug Fix (2025-01-02) ✅
 
-**1. Execution ID:**
-- Generated UUID at CLI start (`sentinelperf run`)
-- Stored in `AgentState.execution_id`
-- Propagated to: Markdown report, JSON summary, Console output
+**BUG FIXED:**
+- k6 execution was capped by static VU values
+- System never executed beyond configured VUs even when auto-scaling intended
 
-**2. Execution Timestamps:**
-- `started_at`: Captured at CLI start (UTC, ISO8601)
-- `completed_at`: Captured after report generation (UTC, ISO8601)
-- REAL runtime timestamps, not reused values
+**FIX IMPLEMENTED:**
+1. New `execute_autoscale_stress()` method in k6_executor.py
+   - Executes k6 stages incrementally (REAL k6 executions per stage)
+   - Checks for breaking point after each stage
+   - Stops immediately when error_threshold OR latency_threshold exceeded
+   - Default: +50 VUs per step, 30s per stage
 
-**3. Report Naming Guarantee:**
-- Filename format: `sentinelperf_report_{timestamp}_{exec_id_short}.md`
-- Example: `sentinelperf_report_20251225_101751_d50cf49c.md`
-- Timestamp from execution start, not report generation time
-- Execution ID prefix (8 chars) for uniqueness
+2. Tracking data recorded:
+   - `max_vus_attempted`: Highest VUs attempted
+   - `max_vus_reached`: Highest VUs completed successfully
+   - `stop_reason`: One of:
+     - `breaking_point_error` - error rate threshold exceeded
+     - `breaking_point_latency` - P95 latency threshold exceeded
+     - `max_limit_reached` - configured maximum achieved
+     - `execution_failure` - k6 execution failed
 
-**4. Fail-Loud Behavior:**
-- `report_generated` flag in state, only set after successful generation
-- CLI checks flag and prints RED error: "NO REPORT GENERATED – execution aborted before completion"
-- Non-zero exit code on failure
+3. Agent updated to use autoscale stress by default (when adaptive mode not enabled)
 
-**5. Execution Proof Block (NEW SECTION):**
+**REPORTING:**
+- Executive Summary shows: "Scaled to **250 VUs** of 1000 configured — stopped: error threshold exceeded"
+- Execution Proof shows: "Max VUs ACTUALLY EXECUTED | **250**"
+- Load Execution Summary shows: Planned vs Executed stages
 
-Markdown:
+### Example Output:
 ```
-## Execution Proof
-| Property | Value |
-|----------|-------|
-| Execution ID | `d50cf49c-...` |
-| Started At | 2025-12-25T10:17:51+00:00 |
-| Completed At | 2025-12-25T10:18:05+00:00 |
-| Config File | `/path/to/sentinelperf.yaml` |
-| Environment | test |
-| Max VUs ACTUALLY EXECUTED | **250** |
-| Autoscaling Enabled | True |
-```
+## Executive Summary
 
-JSON:
-```json
-"execution_proof": {
-  "execution_id": "d50cf49c-...",
-  "started_at": "2025-12-25T10:17:51+00:00",
-  "completed_at": "2025-12-25T10:18:05+00:00",
-  "config": "/path/to/sentinelperf.yaml",
-  "environment": "test",
-  "max_vus_executed": 250,
-  "autoscaling_enabled": true
-}
-```
+**Load Execution:** Scaled to **250 VUs** of 1000 configured — stopped: error threshold exceeded
+**Breaking Point:** System reached its limit at **250 VUs** (400.0 RPS) — error rate breach
 
-**6. Max VU Truth:**
-- `achieved_max_vus` calculated from actual load results
-- Executive Summary shows ACTUAL max VUs only
-- Console output displays actual max when no breaking point
+### Load Execution Summary
+- **Configured Max VUs:** 1000
+- **Achieved Max VUs:** 250
+- **Early Stop Reason:** breaking_point_error
+- **Planned Stages:** 10, 60, 110, 160, 210, ... VUs
+- **Executed Stages:** 10, 60, 110, 160, 210, 250 VUs
+```
 
 ### Files Modified
-- `/app/sentinelperf/cli.py` - UUID generation, fail-loud behavior
-- `/app/sentinelperf/core/state.py` - Added execution_id, config_file_path, autoscaling_enabled, report_generated
-- `/app/sentinelperf/core/agent.py` - Execution context, report_generated flag
-- `/app/sentinelperf/reports/markdown.py` - Execution Proof section, timestamped filenames
-- `/app/sentinelperf/reports/json_report.py` - execution_proof object, timestamped filenames
-- `/app/sentinelperf/reports/console.py` - Execution ID in output
+- `/app/sentinelperf/load/k6_executor.py` - Added `execute_autoscale_stress()`, `AutoScaleResult`
+- `/app/sentinelperf/core/agent.py` - Updated load execution to use autoscale stress
+- `/app/sentinelperf/reports/markdown.py` - Improved stop reason formatting
 
 ### Test Commands
 ```bash

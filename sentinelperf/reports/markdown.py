@@ -307,9 +307,6 @@ class MarkdownReporter:
             lines.append(f"**Confidence penalty applied:** -{confidence_penalty*100:.0f}%")
         
         return "\n".join(lines)
-            lines.append(f"**Confidence penalty applied:** -{confidence_penalty*100:.0f}%")
-        
-        return "\n".join(lines)
     
     def _infra_saturation_section_legacy(self, state: AgentState) -> str:
         """Legacy format for backward compatibility (pre_test/post_test only)"""

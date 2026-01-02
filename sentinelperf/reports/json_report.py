@@ -143,6 +143,8 @@ class JSONReporter:
                 "snapshots": [],
                 "warnings": [],
                 "confidence_penalty": 0,
+                "saturated_at_break": False,
+                "breaking_point_vus": 0,
             }
         
         # Check for new timeline format
@@ -153,6 +155,8 @@ class JSONReporter:
                 "snapshots": infra.get("snapshots", []),
                 "warnings": infra.get("warnings", []),
                 "confidence_penalty": infra.get("confidence_penalty", 0),
+                "saturated_at_break": infra.get("saturated_at_break", False),
+                "breaking_point_vus": infra.get("breaking_point_vus", 0),
             }
         
         # Legacy format conversion

@@ -569,8 +569,19 @@ class SentinelPerfAgent:
                 print(f"  k6 available: {k6_version}")
             
             load_results = []
+            autoscale_result = None
             
-            # Check if adaptive mode is enabled
+            # Get autoscaling config
+            max_vus_limit = self.config.load_testing.max_vus if self.config.load_testing else 100
+            initial_vus = self.config.load.initial_vus if hasattr(self.config.load, 'initial_vus') else 10
+            step_vus = self.config.load.adaptive_step if hasattr(self.config.load, 'adaptive_step') else 50
+            error_threshold = self.config.load.error_rate_threshold if hasattr(self.config.load, 'error_rate_threshold') else 0.05
+            
+            # Track configured max for reporting
+            state["configured_max_vus"] = max_vus_limit
+            state["autoscaling_enabled"] = True
+            
+            # Check if adaptive mode is enabled OR use autoscale stress by default
             if self.config.load.adaptive_enabled:
                 if self.verbose:
                     print(f"  Adaptive mode enabled")
@@ -608,19 +619,41 @@ class SentinelPerfAgent:
                         raw_output=k6_result.raw_stdout[:1000] if k6_result.raw_stdout else "",
                     )
                     load_results.append(load_result)
+                    
+                # Track achieved VUs
+                if k6_results:
+                    state["achieved_max_vus"] = max((r.metrics.vus_max for r in k6_results), default=0)
+                    state["executed_vus_stages"] = [r.metrics.vus_max for r in k6_results]
             else:
-                # Default behavior: execute predefined scripts
+                # Use auto-scale stress execution for proper incremental scaling
                 if self.verbose:
-                    print(f"  Running {len(self._generated_scripts)} tests...")
+                    print(f"  Auto-scale stress: {initial_vus} → {max_vus_limit} VUs (step={step_vus})")
                 
-                k6_results = self.k6_executor.execute_all(
-                    self._generated_scripts,
-                    timeout_per_test=300,
+                # Use stress script as template
+                stress_script = None
+                for s in self._generated_scripts:
+                    if s.test_type.value == "stress":
+                        stress_script = s
+                        break
+                
+                if stress_script is None:
+                    stress_script = self._generated_scripts[0]
+                
+                # Execute with autoscaling - real incremental k6 stages
+                autoscale_result = self.k6_executor.execute_autoscale_stress(
+                    script=stress_script,
+                    initial_vus=initial_vus,
+                    max_vus_limit=max_vus_limit,
+                    step_vus=step_vus,
+                    step_duration_seconds=30,
+                    error_threshold=error_threshold,
+                    latency_p95_threshold_ms=5000,
+                    timeout_per_step=120,
                     verbose=self.verbose,
                 )
                 
                 # Convert K6Result to LoadTestResult
-                for k6_result in k6_results:
+                for k6_result in autoscale_result.results:
                     load_result = LoadTestResult(
                         test_type=k6_result.test_type,
                         vus=k6_result.metrics.vus_max,
@@ -636,6 +669,15 @@ class SentinelPerfAgent:
                         raw_output=k6_result.raw_stdout[:1000] if k6_result.raw_stdout else "",
                     )
                     load_results.append(load_result)
+                
+                # Record autoscale tracking data
+                state["achieved_max_vus"] = autoscale_result.max_vus_reached
+                state["executed_vus_stages"] = autoscale_result.executed_stages
+                state["planned_vus_stages"] = list(range(initial_vus, max_vus_limit + 1, step_vus))
+                
+                # Set early stop reason if not max limit
+                if autoscale_result.stop_reason != "max_limit_reached":
+                    state["early_stop_reason"] = autoscale_result.stop_reason
             
             state["load_results"] = load_results
             

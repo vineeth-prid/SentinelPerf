@@ -124,13 +124,29 @@ class MarkdownReporter:
         configured_max = state.configured_max_vus
         achieved_max = state.achieved_max_vus
         
+        # Calculate achieved from load results if not set
+        if achieved_max == 0 and state.load_results:
+            achieved_max = max((r.vus for r in state.load_results), default=0)
+        
+        # Format stop reason for display
+        stop_reason_display = {
+            "breaking_point_error": "error threshold exceeded",
+            "breaking_point_latency": "latency threshold exceeded",
+            "breaking_point": "breaking point detected",
+            "max_limit_reached": "configured maximum reached",
+            "execution_failure": "execution failure",
+            "infra_saturation": "infrastructure saturation",
+        }
+        
         if configured_max > 0:
             if achieved_max >= configured_max:
-                load_summary = f"**Load Execution:** Scaled to **{achieved_max} VUs** (configured maximum reached)"
+                load_summary = f"**Load Execution:** Scaled to **{achieved_max} VUs** (configured maximum reached ✓)"
             elif achieved_max > 0:
                 load_summary = f"**Load Execution:** Scaled to **{achieved_max} VUs** of {configured_max} configured"
-                if state.early_stop_reason:
-                    load_summary += f" — stopped early: {state.early_stop_reason}"
+                reason = state.early_stop_reason
+                if reason:
+                    reason_text = stop_reason_display.get(reason, reason.replace("_", " "))
+                    load_summary += f" — stopped: {reason_text}"
                 elif state.breaking_point and state.breaking_point.vus_at_break > 0:
                     load_summary += " — breaking point detected"
             else:

@@ -436,6 +436,7 @@ class K6Executor:
         - infra saturation is detected
         
         Each increment executes a REAL k6 stage.
+        Captures infra metrics (CPU, memory) at each VU increment.
         
         Args:
             script: Base TestScript with endpoints and config
@@ -449,9 +450,10 @@ class K6Executor:
             verbose: Print progress
             
         Returns:
-            AutoScaleResult with all execution data
+            AutoScaleResult with all execution data including infra timeline
         """
         from sentinelperf.load.generator import TestType
+        from sentinelperf.telemetry.infra_monitor import check_infra_saturation
         
         results = []
         current_vus = initial_vus
@@ -459,6 +461,13 @@ class K6Executor:
         max_vus_reached = 0
         stop_reason = None
         executed_stages = []
+        infra_timeline = []
+        breaking_point_vus = 0
+        infra_saturated_at_break = False
+        
+        # Infra saturation threshold
+        CPU_SATURATION_THRESHOLD = 85.0
+        MEMORY_SATURATION_THRESHOLD = 90.0
         
         if verbose:
             print(f"  Auto-scale stress: {initial_vus} → {max_vus_limit} VUs (step={step_vus})")
@@ -491,19 +500,44 @@ class K6Executor:
             results.append(result)
             executed_stages.append(current_vus)
             
-            # Capture metrics
+            # Capture metrics from k6 result
             error_rate = result.metrics.error_rate
             latency_p95 = result.metrics.latency_p95
             rps = result.metrics.requests_per_second
             
+            # Capture infra metrics at this VU level (non-blocking)
+            infra_result = check_infra_saturation()
+            infra_saturated = (
+                infra_result.cpu_percent >= CPU_SATURATION_THRESHOLD or
+                infra_result.memory_percent >= MEMORY_SATURATION_THRESHOLD
+            )
+            
+            # Build infra metric point
+            infra_point = InfraMetricPoint(
+                vus=current_vus,
+                cpu_percent=infra_result.cpu_percent,
+                memory_percent=infra_result.memory_percent,
+                rps=rps,
+                latency_p95_ms=latency_p95,
+                error_rate=error_rate,
+                saturated=infra_saturated,
+                timestamp=datetime.utcnow().isoformat(),
+            )
+            infra_timeline.append(infra_point)
+            
             if verbose:
+                infra_indicator = " ⚠️INFRA" if infra_saturated else ""
                 print(f"      → P95: {latency_p95:.0f}ms, "
                       f"Error: {error_rate:.1%}, "
-                      f"RPS: {rps:.1f}")
+                      f"RPS: {rps:.1f}, "
+                      f"CPU: {infra_result.cpu_percent:.0f}%, "
+                      f"Mem: {infra_result.memory_percent:.0f}%{infra_indicator}")
             
             # Check for breaking point: ERROR THRESHOLD
             if error_rate >= error_threshold:
                 stop_reason = "breaking_point_error"
+                breaking_point_vus = current_vus
+                infra_saturated_at_break = infra_saturated
                 if verbose:
                     print(f"    ✗ Breaking point: Error rate {error_rate:.1%} >= {error_threshold:.1%} at {current_vus} VUs")
                 break
@@ -511,6 +545,8 @@ class K6Executor:
             # Check for breaking point: LATENCY THRESHOLD
             if latency_p95 >= latency_p95_threshold_ms:
                 stop_reason = "breaking_point_latency"
+                breaking_point_vus = current_vus
+                infra_saturated_at_break = infra_saturated
                 if verbose:
                     print(f"    ✗ Breaking point: Latency P95 {latency_p95:.0f}ms >= {latency_p95_threshold_ms:.0f}ms at {current_vus} VUs")
                 break
@@ -518,6 +554,7 @@ class K6Executor:
             # Check for k6 execution failure
             if not result.success and result.exit_code != 0:
                 stop_reason = "execution_failure"
+                breaking_point_vus = current_vus
                 if verbose:
                     print(f"    ✗ Execution failed at {current_vus} VUs")
                 break
@@ -546,6 +583,9 @@ class K6Executor:
             max_vus_reached=max_vus_reached,
             stop_reason=stop_reason or "unknown",
             executed_stages=executed_stages,
+            infra_timeline=infra_timeline,
+            breaking_point_vus=breaking_point_vus,
+            infra_saturated_at_break=infra_saturated_at_break,
         )
     
     def execute_adaptive(

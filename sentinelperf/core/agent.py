@@ -530,27 +530,31 @@ class SentinelPerfAgent:
         self._generated_scripts.append(spike_test)
         
         # Store test metadata in state (without script objects for serialization)
+        # Note: Store endpoint count as 'endpoint_count', keep 'endpoints' for the list if needed
         state["generated_tests"] = [
             {
                 "type": baseline_test.test_type.value,
                 "name": baseline_test.name,
                 "vus": max(1, initial_vus),
                 "stages": len(baseline_test.stages),
-                "endpoints": len(endpoints),
+                "endpoint_count": len(endpoints),
+                "endpoints": endpoints,  # Store actual list for report iteration
             },
             {
                 "type": stress_test.test_type.value,
                 "name": stress_test.name,
                 "vus": max_vus,
                 "stages": len(stress_test.stages),
-                "endpoints": len(endpoints),
+                "endpoint_count": len(endpoints),
+                "endpoints": endpoints,  # Store actual list for report iteration
             },
             {
                 "type": spike_test.test_type.value,
                 "name": spike_test.name,
                 "vus": max_vus,
                 "stages": len(spike_test.stages),
-                "endpoints": len(endpoints),
+                "endpoint_count": len(endpoints),
+                "endpoints": endpoints,  # Store actual list for report iteration
             },
         ]
         

@@ -265,6 +265,9 @@ class SentinelPerfAgent:
         1. Connect to telemetry source (OTEL > logs > prometheus)
         2. Fetch spans/metrics
         3. Infer baseline behavior (rules-only)
+        
+        NOTE: Missing/failed telemetry is a WARNING, not an error.
+        Execution continues with default baseline behavior.
         """
         state["phase"] = AgentPhase.TELEMETRY_ANALYSIS.value
         
@@ -276,8 +279,11 @@ class SentinelPerfAgent:
         active_source = telemetry_config.get_active_source()
         
         if not active_source:
-            state["errors"].append("No telemetry source configured or enabled")
-            state["phase"] = AgentPhase.ERROR.value
+            # WARNING: No telemetry source, but execution continues
+            state["errors"].append("No telemetry source configured or enabled - using default baseline")
+            if self.verbose:
+                print("  ⚠ No telemetry source configured - using default baseline")
+            # Do NOT set ERROR phase - continue execution
             return state
         
         state["telemetry_source"] = active_source
@@ -297,8 +303,11 @@ class SentinelPerfAgent:
             )
         
         if telemetry_data is None:
-            state["errors"].append(f"Failed to fetch telemetry from {active_source}")
-            state["phase"] = AgentPhase.ERROR.value
+            # WARNING: Failed to fetch telemetry, but execution continues
+            state["errors"].append(f"Failed to fetch telemetry from {active_source} - using default baseline")
+            if self.verbose:
+                print(f"  ⚠ Failed to fetch telemetry from {active_source} - using default baseline")
+            # Do NOT set ERROR phase - continue execution
             return state
         
         # Store baseline for later phases

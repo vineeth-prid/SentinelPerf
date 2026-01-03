@@ -802,11 +802,19 @@ No load test results available."""
                     endpoints.append(str(ep))
         elif state.generated_tests:
             for test in state.generated_tests:
-                if "endpoints" in test:
-                    for ep in test["endpoints"]:
-                        path = ep.get("path", ep) if isinstance(ep, dict) else str(ep)
-                        if path not in endpoints:
-                            endpoints.append(path)
+                test_endpoints = test.get("endpoints", [])
+                # Guard: ensure endpoints is a list, not an int
+                if not isinstance(test_endpoints, list):
+                    continue
+                for ep in test_endpoints:
+                    if isinstance(ep, dict):
+                        path = ep.get("path", str(ep))
+                    elif isinstance(ep, str):
+                        path = ep
+                    else:
+                        path = str(ep)
+                    if path not in endpoints:
+                        endpoints.append(path)
         
         # Always show telemetry status
         if has_api_telemetry:

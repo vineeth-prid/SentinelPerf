@@ -60,6 +60,10 @@ class JSONReporter:
         max_vus = result.get_max_vus_reached()
         stop_reason = result.get_stop_reason()
         
+        # Autoscale execution data
+        planned_max = state.autoscale_planned_max_vus or state.configured_max_vus
+        autoscale_stop = state.autoscale_stop_reason or state.early_stop_reason
+        
         summary = {
             "version": "1.0",
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -83,8 +87,12 @@ class JSONReporter:
                 "completed_at": state.completed_at.isoformat() if state.completed_at else None,
                 "config": state.config_file_path or None,
                 "environment": state.environment,
-                "max_vus_executed": actual_max_vus,
                 "autoscaling_enabled": state.autoscaling_enabled,
+                "planned_max_vus": planned_max,
+                "actual_max_vus_reached": actual_max_vus,
+                "total_stages_planned": state.autoscale_total_stages_planned or len(state.planned_vus_stages),
+                "total_stages_executed": state.autoscale_total_stages_executed or len(state.executed_vus_stages),
+                "stop_reason": autoscale_stop,
             },
             
             "target": {

@@ -153,8 +153,9 @@ class SentinelPerfAgent:
             # Execution identity
             "execution_id": self.execution_id,
             "config_file_path": self.config_file_path,
-            "autoscaling_enabled": getattr(self.config.load_testing, 'autoscaling_enabled', False) if self.config.load_testing else False,
-            "configured_max_vus": self.config.load_testing.max_vus if self.config.load_testing else 0,
+            # Safe access to optional load_testing config
+            "autoscaling_enabled": self.config.load_testing.autoscaling_enabled if self.config.load_testing else False,
+            "configured_max_vus": self.config.load_testing.max_vus_limit if self.config.load_testing else self.config.load.max_vus,
             "achieved_max_vus": 0,
             "planned_vus_stages": [],
             "executed_vus_stages": [],

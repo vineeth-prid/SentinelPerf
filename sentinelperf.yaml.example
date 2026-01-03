@@ -37,11 +37,22 @@ environments:
       p95_latency_threshold_ms: 500   # 500ms
       adaptive_step: 10
     
-    # Optional: Autoscaling configuration (uncomment to enable)
+    # Autoscale configuration (dynamic VU ramping)
+    # Autoscaling ramps VUs from initial_vus to max_vus in step_vus increments.
+    # Stops ONLY when: max_vus reached OR breaking point detected (if abort_on_failure=true)
+    autoscale:
+      enabled: false               # Set to true to enable autoscaling
+      initial_vus: 1               # Starting VUs
+      step_vus: 10                 # VU increment per stage
+      max_vus: 1000                # Maximum VUs to reach (NO hard cap)
+      step_duration: "30s"         # Duration per stage
+      abort_on_failure: true       # Stop on breaking point detection
+    
+    # Legacy autoscaling config (deprecated, use 'autoscale' instead)
     # load_testing:
-    #   autoscaling_enabled: false   # Set to true to enable autoscaling
-    #   max_vus_limit: 1000          # Maximum VUs for autoscaling
-    #   scale_step: 100              # VU increment step
+    #   autoscaling_enabled: false
+    #   max_vus_limit: 1000
+    #   scale_step: 100
     
     llm:
       provider: "rules"  # ollama, rules, mock

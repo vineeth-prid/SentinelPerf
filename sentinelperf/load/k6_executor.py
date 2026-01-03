@@ -155,14 +155,18 @@ class AutoScaleResult:
     results: List[K6Result]
     max_vus_attempted: int
     max_vus_reached: int
-    stop_reason: str
+    stop_reason: str  # "breaking_point_detected", "max_vus_reached", "execution_error"
     executed_stages: List[int]
     # Infra timeline - metrics at each VU increment
     infra_timeline: List[InfraMetricPoint] = field(default_factory=list)
-    # Breaking point VUs (if detected near infra saturation)
+    # Breaking point VUs (if detected)
     breaking_point_vus: int = 0
     # Whether infra saturation occurred near breaking point
     infra_saturated_at_break: bool = False
+    # Execution proof fields
+    planned_max_vus: int = 0
+    total_stages_planned: int = 0
+    total_stages_executed: int = 0
 
 
 class K6Executor:

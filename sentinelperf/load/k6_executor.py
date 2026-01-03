@@ -502,7 +502,7 @@ class K6Executor:
             )
             
             if verbose:
-                print(f"    Stage {iteration}: {current_vus} VUs...")
+                print(f"    Stage {stage_num}: {current_vus} VUs...")
             
             # Execute this stage - REAL k6 execution
             result = self.execute(stage_script, timeout_per_step, verbose=False)
@@ -545,57 +545,73 @@ class K6Executor:
             
             # Check for breaking point: ERROR THRESHOLD
             if error_rate >= error_threshold:
-                stop_reason = "breaking_point_error"
+                breaking_point_detected = True
                 breaking_point_vus = current_vus
                 infra_saturated_at_break = infra_saturated
                 if verbose:
                     print(f"    ✗ Breaking point: Error rate {error_rate:.1%} >= {error_threshold:.1%} at {current_vus} VUs")
-                break
+                if abort_on_failure:
+                    stop_reason = "breaking_point_detected"
+                    break
+                # If not aborting, continue but record the breaking point
             
             # Check for breaking point: LATENCY THRESHOLD
             if latency_p95 >= latency_p95_threshold_ms:
-                stop_reason = "breaking_point_latency"
+                breaking_point_detected = True
                 breaking_point_vus = current_vus
                 infra_saturated_at_break = infra_saturated
                 if verbose:
                     print(f"    ✗ Breaking point: Latency P95 {latency_p95:.0f}ms >= {latency_p95_threshold_ms:.0f}ms at {current_vus} VUs")
-                break
+                if abort_on_failure:
+                    stop_reason = "breaking_point_detected"
+                    break
+                # If not aborting, continue but record the breaking point
             
-            # Check for k6 execution failure
+            # Check for k6 execution failure (always stop on execution error)
             if not result.success and result.exit_code != 0:
-                stop_reason = "execution_failure"
+                stop_reason = "execution_error"
                 breaking_point_vus = current_vus
                 if verbose:
-                    print(f"    ✗ Execution failed at {current_vus} VUs")
+                    print(f"    ✗ Execution error at {current_vus} VUs")
                 break
             
             # Stage completed successfully
             max_vus_reached = current_vus
             
+            # Check if we've reached max_vus
+            if current_vus >= max_vus_limit:
+                stop_reason = "max_vus_reached"
+                if verbose:
+                    print(f"    ✓ Reached max VUs: {max_vus_limit}")
+                break
+            
             # Increment for next stage
             current_vus += step_vus
-        
-        # Determine final stop reason
-        if stop_reason is None:
+            # Cap at max_vus_limit if next step would exceed
             if current_vus > max_vus_limit:
-                stop_reason = "max_limit_reached"
-                if verbose:
-                    print(f"    ✓ Reached max limit: {max_vus_limit} VUs")
+                current_vus = max_vus_limit
+        
+        # Determine final stop reason if not set
+        if stop_reason is None:
+            stop_reason = "max_vus_reached"
         
         if verbose:
-            print(f"  Auto-scale complete: {len(results)} stages, "
-                  f"max reached: {max_vus_reached} VUs, "
-                  f"reason: {stop_reason}")
+            print(f"  Autoscale complete: {len(executed_stages)} stages executed, "
+                  f"max VUs reached: {max_vus_reached}, "
+                  f"stop reason: {stop_reason}")
         
         return AutoScaleResult(
             results=results,
             max_vus_attempted=max_vus_attempted,
             max_vus_reached=max_vus_reached,
-            stop_reason=stop_reason or "unknown",
+            stop_reason=stop_reason,
             executed_stages=executed_stages,
             infra_timeline=infra_timeline,
             breaking_point_vus=breaking_point_vus,
             infra_saturated_at_break=infra_saturated_at_break,
+            planned_max_vus=max_vus_limit,
+            total_stages_planned=len(planned_stages),
+            total_stages_executed=len(executed_stages),
         )
     
     def execute_adaptive(

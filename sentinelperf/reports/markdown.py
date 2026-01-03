@@ -149,12 +149,13 @@ class MarkdownReporter:
 | **Stop Reason** | **{autoscale_stop}** |"""
 
     def _executive_summary(self, state: AgentState, result: ExecutionResult) -> str:
-        """Executive summary section with load execution transparency"""
+        """Executive summary section with accurate execution transparency"""
         summary_lines = ["## Executive Summary", ""]
         
-        # Load Execution Transparency
-        configured_max = state.configured_max_vus
+        # Load Execution Transparency - reflect ACTUAL execution, not intent
+        planned_max = state.autoscale_planned_max_vus or state.configured_max_vus
         achieved_max = state.achieved_max_vus
+        stop_reason = state.autoscale_stop_reason or state.early_stop_reason
         
         # Calculate achieved from load results if not set
         if achieved_max == 0 and state.load_results:
@@ -162,49 +163,68 @@ class MarkdownReporter:
         
         # Format stop reason for display
         stop_reason_display = {
+            "breaking_point_detected": "breaking point detected",
             "breaking_point_error": "error threshold exceeded",
             "breaking_point_latency": "latency threshold exceeded",
-            "breaking_point": "breaking point detected",
+            "max_vus_reached": "configured maximum reached",
             "max_limit_reached": "configured maximum reached",
-            "execution_failure": "execution failure",
+            "execution_error": "execution error",
             "infra_saturation": "infrastructure saturation",
         }
         
-        if configured_max > 0:
-            if achieved_max >= configured_max:
+        # Autoscaling status
+        if state.autoscaling_enabled:
+            if stop_reason == "max_vus_reached" and achieved_max >= planned_max:
+                load_summary = f"**Autoscale Execution:** ✓ Reached target **{achieved_max} VUs** (max_vus={planned_max})"
+            elif stop_reason == "breaking_point_detected":
+                load_summary = f"**Autoscale Execution:** ⚠ Stopped at **{achieved_max} VUs** of {planned_max} planned — **breaking point detected**"
+            elif stop_reason == "execution_error":
+                load_summary = f"**Autoscale Execution:** ✗ Failed at **{achieved_max} VUs** of {planned_max} planned — **execution error**"
+            elif achieved_max > 0:
+                reason_text = stop_reason_display.get(stop_reason, stop_reason or "unknown")
+                load_summary = f"**Autoscale Execution:** Stopped at **{achieved_max} VUs** of {planned_max} planned — {reason_text}"
+            else:
+                load_summary = f"**Autoscale Execution:** Planned for {planned_max} VUs but execution did not complete"
+            summary_lines.append(load_summary)
+        elif planned_max > 0:
+            if achieved_max >= planned_max:
                 load_summary = f"**Load Execution:** Scaled to **{achieved_max} VUs** (configured maximum reached ✓)"
             elif achieved_max > 0:
-                load_summary = f"**Load Execution:** Scaled to **{achieved_max} VUs** of {configured_max} configured"
-                reason = state.early_stop_reason
-                if reason:
-                    reason_text = stop_reason_display.get(reason, reason.replace("_", " "))
+                load_summary = f"**Load Execution:** Scaled to **{achieved_max} VUs** of {planned_max} configured"
+                if stop_reason:
+                    reason_text = stop_reason_display.get(stop_reason, stop_reason.replace("_", " "))
                     load_summary += f" — stopped: {reason_text}"
-                elif state.breaking_point and state.breaking_point.vus_at_break > 0:
-                    load_summary += " — breaking point detected"
             else:
-                load_summary = f"**Load Execution:** Configured for {configured_max} VUs (execution incomplete)"
+                load_summary = f"**Load Execution:** Configured for {planned_max} VUs (execution incomplete)"
             summary_lines.append(load_summary)
-            summary_lines.append("")
         elif state.load_results:
             # Fallback: calculate from load results
             max_from_results = max((r.vus for r in state.load_results), default=0)
             if max_from_results > 0:
                 summary_lines.append(f"**Load Execution:** Tested up to **{max_from_results} VUs**")
-                summary_lines.append("")
         
-        # Breaking point summary
+        summary_lines.append("")
+        
+        # Breaking point summary - NEVER say "not detected" if max_vus was not reached
         if state.breaking_point and state.breaking_point.vus_at_break > 0:
             bp = state.breaking_point
             summary_lines.append(
-                f"**Breaking Point:** System reached its limit at **{bp.vus_at_break} VUs** "
+                f"**Breaking Point:** System limit at **{bp.vus_at_break} VUs** "
                 f"({bp.rps_at_break:.1f} RPS) — {bp.failure_type.replace('_', ' ')}"
             )
         else:
-            max_tested = achieved_max or max((r.vus for r in state.load_results), default=0) if state.load_results else 0
+            max_tested = achieved_max or (max((r.vus for r in state.load_results), default=0) if state.load_results else 0)
             if max_tested > 0:
-                summary_lines.append(
-                    f"**Breaking Point:** Not detected within tested range (up to {max_tested} VUs)"
-                )
+                if planned_max > 0 and max_tested < planned_max:
+                    # Did not reach max - be explicit about incomplete testing
+                    summary_lines.append(
+                        f"**Breaking Point:** Not detected up to {max_tested} VUs "
+                        f"(planned: {planned_max} VUs — testing incomplete)"
+                    )
+                else:
+                    summary_lines.append(
+                        f"**Breaking Point:** Not detected within tested range (up to {max_tested} VUs)"
+                    )
             else:
                 summary_lines.append(
                     "**Breaking Point:** Not detected — load tests may not have executed"

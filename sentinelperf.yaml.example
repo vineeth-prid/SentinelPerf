@@ -37,6 +37,12 @@ environments:
       p95_latency_threshold_ms: 500   # 500ms
       adaptive_step: 10
     
+    # Optional: Autoscaling configuration (uncomment to enable)
+    # load_testing:
+    #   autoscaling_enabled: false   # Set to true to enable autoscaling
+    #   max_vus_limit: 1000          # Maximum VUs for autoscaling
+    #   scale_step: 100              # VU increment step
+    
     llm:
       provider: "rules"  # ollama, rules, mock
       model: "qwen2.5:14b"

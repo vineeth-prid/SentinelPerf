@@ -624,15 +624,34 @@ class SentinelPerfAgent:
             load_results = []
             autoscale_result = None
             
-            # Get autoscaling config - safe access with fallback to load.max_vus
-            max_vus_limit = self.config.load_testing.max_vus_limit if self.config.load_testing else self.config.load.max_vus
-            initial_vus = self.config.load.initial_vus
-            step_vus = self.config.load_testing.scale_step if self.config.load_testing else self.config.load.adaptive_step
-            error_threshold = self.config.load.error_rate_threshold
+            # Read autoscale config from YAML (environments.<env>.autoscale)
+            autoscale_cfg = self.config.autoscale
+            autoscale_enabled = autoscale_cfg.enabled if autoscale_cfg else False
             
-            # Track configured max for reporting
+            # Get autoscale parameters from config or use defaults
+            if autoscale_cfg and autoscale_enabled:
+                initial_vus = autoscale_cfg.initial_vus
+                max_vus_limit = autoscale_cfg.max_vus
+                step_vus = autoscale_cfg.step_vus
+                step_duration = autoscale_cfg.step_duration
+                abort_on_failure = autoscale_cfg.abort_on_failure
+                # Parse step_duration (e.g., "30s" -> 30)
+                step_duration_seconds = int(step_duration.rstrip('s')) if step_duration.endswith('s') else 30
+            else:
+                # Fallback to load_testing config or load config
+                initial_vus = self.config.load.initial_vus
+                max_vus_limit = self.config.load_testing.max_vus_limit if self.config.load_testing else self.config.load.max_vus
+                step_vus = self.config.load_testing.scale_step if self.config.load_testing else self.config.load.adaptive_step
+                step_duration_seconds = 30
+                abort_on_failure = True
+            
+            error_threshold = self.config.load.error_rate_threshold
+            latency_p95_threshold = self.config.load.p95_latency_threshold_ms
+            
+            # Track config for reporting
             state["configured_max_vus"] = max_vus_limit
-            state["autoscaling_enabled"] = self.config.load_testing.autoscaling_enabled if self.config.load_testing else False
+            state["autoscaling_enabled"] = autoscale_enabled
+            state["autoscale_abort_on_failure"] = abort_on_failure
             
             # Check if adaptive mode is enabled OR use autoscale stress by default
             if self.config.load.adaptive_enabled:
@@ -680,7 +699,7 @@ class SentinelPerfAgent:
             else:
                 # Use auto-scale stress execution for proper incremental scaling
                 if self.verbose:
-                    print(f"  Auto-scale stress: {initial_vus} → {max_vus_limit} VUs (step={step_vus})")
+                    print(f"  Autoscale: {initial_vus} → {max_vus_limit} VUs (step={step_vus}, abort_on_failure={abort_on_failure})")
                 
                 # Use stress script as template
                 stress_script = None
@@ -692,17 +711,18 @@ class SentinelPerfAgent:
                 if stress_script is None:
                     stress_script = self._generated_scripts[0]
                 
-                # Execute with autoscaling - real incremental k6 stages
+                # Execute with autoscaling - NO hard-coded limits
                 autoscale_result = self.k6_executor.execute_autoscale_stress(
                     script=stress_script,
                     initial_vus=initial_vus,
-                    max_vus_limit=max_vus_limit,
+                    max_vus_limit=max_vus_limit,  # Will reach this unless stopped
                     step_vus=step_vus,
-                    step_duration_seconds=30,
+                    step_duration_seconds=step_duration_seconds,
                     error_threshold=error_threshold,
-                    latency_p95_threshold_ms=5000,
+                    latency_p95_threshold_ms=latency_p95_threshold,
                     timeout_per_step=120,
                     verbose=self.verbose,
+                    abort_on_failure=abort_on_failure,
                 )
                 
                 # Convert K6Result to LoadTestResult
@@ -723,14 +743,21 @@ class SentinelPerfAgent:
                     )
                     load_results.append(load_result)
                 
-                # Record autoscale tracking data
+                # Record autoscale execution proof data
                 state["achieved_max_vus"] = autoscale_result.max_vus_reached
                 state["executed_vus_stages"] = autoscale_result.executed_stages
                 state["planned_vus_stages"] = list(range(initial_vus, max_vus_limit + 1, step_vus))
+                state["autoscale_stop_reason"] = autoscale_result.stop_reason
+                state["autoscale_planned_max_vus"] = autoscale_result.planned_max_vus
+                state["autoscale_total_stages_planned"] = autoscale_result.total_stages_planned
+                state["autoscale_total_stages_executed"] = autoscale_result.total_stages_executed
                 
-                # Set early stop reason if not max limit
-                if autoscale_result.stop_reason != "max_limit_reached":
+                # Set early stop reason
+                if autoscale_result.stop_reason != "max_vus_reached":
                     state["early_stop_reason"] = autoscale_result.stop_reason
+                    state["execution_stop_reason"] = self._format_stop_reason(autoscale_result.stop_reason, autoscale_result.max_vus_reached)
+                else:
+                    state["execution_stop_reason"] = f"Max VUs reached ({max_vus_limit})"
                 
                 # Build infra saturation data with timeline
                 if autoscale_result.infra_timeline:

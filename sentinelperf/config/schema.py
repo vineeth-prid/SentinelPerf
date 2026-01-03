@@ -93,6 +93,18 @@ class RecommendationsConfig(BaseModel):
     max_recommendations: int = Field(default=5, ge=1, le=10, description="Max recommendations to show")
 
 
+class LoadTestingConfig(BaseModel):
+    """
+    Optional load testing configuration for autoscaling behavior.
+    
+    This is separate from LoadConfig to maintain backward compatibility.
+    If not specified in YAML, safe defaults are used.
+    """
+    autoscaling_enabled: bool = Field(default=False, description="Enable autoscaling VU escalation")
+    max_vus_limit: int = Field(default=1000, ge=1, description="Maximum VUs limit for autoscaling")
+    scale_step: int = Field(default=100, ge=1, description="VU increment step for autoscaling")
+
+
 class TargetConfig(BaseModel):
     """Target application configuration"""
     base_url: str = Field(..., description="Base URL of target application")

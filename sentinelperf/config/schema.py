@@ -182,6 +182,18 @@ class SentinelPerfConfig(BaseModel):
             raise ValueError("No active environment set")
         return self.environments[self._active_env].recommendations
     
+    @property
+    def load_testing(self) -> Optional[LoadTestingConfig]:
+        """
+        Get load_testing config for active environment.
+        
+        Returns None if not configured (backward compatible).
+        Code accessing this MUST handle None case safely.
+        """
+        if not self._active_env:
+            raise ValueError("No active environment set")
+        return self.environments[self._active_env].load_testing
+    
     def set_active_environment(self, env_name: str) -> None:
         """Set the active environment"""
         if env_name not in self.environments:

@@ -598,6 +598,15 @@ class SentinelPerfAgent:
         
         return headers
     
+    def _format_stop_reason(self, stop_reason: str, vus_reached: int) -> str:
+        """Format stop reason for human-readable output"""
+        reason_map = {
+            "breaking_point_detected": f"Breaking point detected at {vus_reached} VUs",
+            "max_vus_reached": f"Max VUs reached ({vus_reached})",
+            "execution_error": f"Execution error at {vus_reached} VUs",
+        }
+        return reason_map.get(stop_reason, stop_reason)
+    
     def _node_load_execution(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute load tests using k6.

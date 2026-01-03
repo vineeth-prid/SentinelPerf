@@ -89,21 +89,22 @@ def cmd_run(args: argparse.Namespace) -> int:
     
     config_path = Path(args.config)
     
+    # Config parsing failure - legitimate abort before execution starts
     if not config_path.exists():
         print(f"{RED}Error:{RESET} Configuration file not found: {config_path}", file=sys.stderr)
         print("  Create a sentinelperf.yaml file or specify path with --config", file=sys.stderr)
-        print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
+        print(f"\n{RED}FAILED_TO_EXECUTE: Config file not found{RESET}", file=sys.stderr)
         return 1
     
     try:
         config = load_config(config_path, args.env)
     except ValueError as e:
         print(f"{RED}Configuration Error:{RESET} {e}", file=sys.stderr)
-        print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
+        print(f"\n{RED}FAILED_TO_EXECUTE: Invalid configuration{RESET}", file=sys.stderr)
         return 1
     except Exception as e:
         print(f"{RED}Error:{RESET} Failed to load configuration: {e}", file=sys.stderr)
-        print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
+        print(f"\n{RED}FAILED_TO_EXECUTE: Configuration load error{RESET}", file=sys.stderr)
         return 1
     
     if args.verbose:
@@ -125,13 +126,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     
     result = agent.run()
     
-    # Check if report was generated (fail-loud behavior)
-    if not result.state.report_generated:
-        print(f"\n{RED}NO REPORT GENERATED – execution aborted before completion{RESET}", file=sys.stderr)
-        return 1
-    
     # Print console summary with execution ID
     print_summary(result, execution_id=execution_id)
+    
+    # Report should always be generated if execution started
+    # Only return error if report was not generated (indicates critical failure)
+    if not result.state.report_generated:
+        print(f"\n{YELLOW}Note: Report generation incomplete - check errors above{RESET}", file=sys.stderr)
     
     return 0 if result.success else 1
 

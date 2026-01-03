@@ -187,7 +187,7 @@ class SentinelPerfAgent:
             )
             
         except Exception as e:
-            # Handle execution errors - ensure report_generated stays False
+            # Handle execution errors - attempt to generate report even on failure
             error_state = AgentState(
                 phase=AgentPhase.ERROR,
                 environment=self.config._active_env or "unknown",
@@ -199,11 +199,45 @@ class SentinelPerfAgent:
             )
             error_state.errors.append(str(e))
             
-            return ExecutionResult(
-                success=False,
-                state=error_state,
-                summary=f"Execution failed: {e}",
-            )
+            # Attempt to generate error report
+            try:
+                from sentinelperf.reports.markdown import MarkdownReporter
+                from sentinelperf.reports.json_report import JSONReporter
+                
+                error_result = ExecutionResult(
+                    success=False,
+                    state=error_state,
+                    summary=f"Execution completed with errors: {e}",
+                )
+                
+                md_reporter = MarkdownReporter(self.output_dir)
+                md_path = md_reporter.generate(error_result)
+                
+                json_reporter = JSONReporter(self.output_dir)
+                json_path = json_reporter.generate(error_result)
+                
+                error_state.report_generated = True
+                
+                if self.verbose:
+                    print(f"  Error report generated: {md_path}")
+                
+                return ExecutionResult(
+                    success=False,
+                    state=error_state,
+                    summary=f"Execution completed with errors: {e}",
+                    markdown_report_path=str(md_path),
+                    json_report_path=str(json_path),
+                )
+            except Exception as report_error:
+                # Report generation failed - return original error
+                if self.verbose:
+                    print(f"  Failed to generate error report: {report_error}")
+                error_state.errors.append(f"Report generation failed: {report_error}")
+                return ExecutionResult(
+                    success=False,
+                    state=error_state,
+                    summary=f"Execution failed: {e}",
+                )
     
     def _dict_to_agent_state(self, d: Dict[str, Any]) -> AgentState:
         """Convert LangGraph dict output to AgentState"""

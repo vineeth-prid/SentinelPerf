@@ -426,31 +426,30 @@ class K6Executor:
         latency_p95_threshold_ms: float = 5000,
         timeout_per_step: int = 120,
         verbose: bool = False,
+        abort_on_failure: bool = True,
     ) -> "AutoScaleResult":
         """
         Execute auto-scaling stress test with breaking point detection.
         
-        Incrementally increases VUs until:
-        - breaking point is detected (error_threshold OR latency_threshold)
-        - max_vus_limit is reached
-        - infra saturation is detected
-        
-        Each increment executes a REAL k6 stage.
-        Captures infra metrics (CPU, memory) at each VU increment.
+        Dynamically ramps VUs from initial_vus to max_vus_limit.
+        NO hard-coded stage limits - continues until:
+        - max_vus_limit is reached, OR
+        - breaking point detected (if abort_on_failure=True)
         
         Args:
             script: Base TestScript with endpoints and config
             initial_vus: Starting VU count
-            max_vus_limit: Maximum VUs to attempt (default 1000)
-            step_vus: VU increment per stage (e.g., +50 or +100)
+            max_vus_limit: Maximum VUs to reach (NO cap - will reach this unless stopped)
+            step_vus: VU increment per stage
             step_duration_seconds: Duration to hold each stage
-            error_threshold: Stop if error rate exceeds this (default 0.05 = 5%)
-            latency_p95_threshold_ms: Stop if P95 latency exceeds this
+            error_threshold: Breaking point if error rate exceeds this
+            latency_p95_threshold_ms: Breaking point if P95 latency exceeds this
             timeout_per_step: Timeout per k6 execution
             verbose: Print progress
+            abort_on_failure: If True, stop on breaking point. If False, continue to max_vus.
             
         Returns:
-            AutoScaleResult with all execution data including infra timeline
+            AutoScaleResult with execution data and stop reason
         """
         from sentinelperf.load.generator import TestType
         from sentinelperf.telemetry.infra_monitor import check_infra_saturation
@@ -464,17 +463,28 @@ class K6Executor:
         infra_timeline = []
         breaking_point_vus = 0
         infra_saturated_at_break = False
+        breaking_point_detected = False
         
         # Infra saturation threshold
         CPU_SATURATION_THRESHOLD = 85.0
         MEMORY_SATURATION_THRESHOLD = 90.0
         
-        if verbose:
-            print(f"  Auto-scale stress: {initial_vus} → {max_vus_limit} VUs (step={step_vus})")
+        # Calculate total planned stages (no limit)
+        planned_stages = []
+        planned_vus = initial_vus
+        while planned_vus <= max_vus_limit:
+            planned_stages.append(planned_vus)
+            if planned_vus >= max_vus_limit:
+                break
+            planned_vus += step_vus
         
-        iteration = 0
-        while current_vus <= max_vus_limit and stop_reason is None:
-            iteration += 1
+        if verbose:
+            print(f"  Autoscale: {initial_vus} → {max_vus_limit} VUs (step={step_vus}, {len(planned_stages)} stages planned)")
+        
+        stage_num = 0
+        # NO hard iteration limit - loop until max_vus reached or stopped
+        while current_vus <= max_vus_limit:
+            stage_num += 1
             max_vus_attempted = current_vus
             
             # Create single-stage script for this VU level

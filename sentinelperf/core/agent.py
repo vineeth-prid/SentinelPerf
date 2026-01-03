@@ -577,15 +577,15 @@ class SentinelPerfAgent:
             load_results = []
             autoscale_result = None
             
-            # Get autoscaling config
-            max_vus_limit = self.config.load_testing.max_vus if self.config.load_testing else 100
-            initial_vus = self.config.load.initial_vus if hasattr(self.config.load, 'initial_vus') else 10
-            step_vus = self.config.load.adaptive_step if hasattr(self.config.load, 'adaptive_step') else 50
-            error_threshold = self.config.load.error_rate_threshold if hasattr(self.config.load, 'error_rate_threshold') else 0.05
+            # Get autoscaling config - safe access with fallback to load.max_vus
+            max_vus_limit = self.config.load_testing.max_vus_limit if self.config.load_testing else self.config.load.max_vus
+            initial_vus = self.config.load.initial_vus
+            step_vus = self.config.load_testing.scale_step if self.config.load_testing else self.config.load.adaptive_step
+            error_threshold = self.config.load.error_rate_threshold
             
             # Track configured max for reporting
             state["configured_max_vus"] = max_vus_limit
-            state["autoscaling_enabled"] = True
+            state["autoscaling_enabled"] = self.config.load_testing.autoscaling_enabled if self.config.load_testing else False
             
             # Check if adaptive mode is enabled OR use autoscale stress by default
             if self.config.load.adaptive_enabled:

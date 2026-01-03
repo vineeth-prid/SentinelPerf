@@ -123,7 +123,13 @@ class MarkdownReporter:
         else:
             exec_status = "UNKNOWN"
             test_count = len(state.load_results) if state.load_results else 0
-            stop_reason = state.execution_stop_reason or state.early_stop_reason or "N/A"
+            stop_reason = state.execution_stop_reason or state.autoscale_stop_reason or state.early_stop_reason or "N/A"
+        
+        # Autoscale execution proof
+        planned_max = state.autoscale_planned_max_vus or state.configured_max_vus or 0
+        stages_planned = state.autoscale_total_stages_planned or len(state.planned_vus_stages)
+        stages_executed = state.autoscale_total_stages_executed or len(state.executed_vus_stages)
+        autoscale_stop = state.autoscale_stop_reason or stop_reason
         
         return f"""## Execution Proof
 
@@ -135,10 +141,12 @@ class MarkdownReporter:
 | Completed At | {completed} |
 | Config File | `{state.config_file_path or 'N/A'}` |
 | Environment | {state.environment} |
-| Tests Executed | **{test_count}** |
-| Max VUs ACTUALLY REACHED | **{actual_max_vus}** |
-| Stop Reason | {stop_reason} |
-| Autoscaling Enabled | {state.autoscaling_enabled} |"""
+| Autoscaling Enabled | {state.autoscaling_enabled} |
+| **Planned Max VUs** | **{planned_max}** |
+| **Actual Max VUs Reached** | **{actual_max_vus}** |
+| Total Autoscale Stages Planned | {stages_planned} |
+| Total Autoscale Stages Executed | {stages_executed} |
+| **Stop Reason** | **{autoscale_stop}** |"""
 
     def _executive_summary(self, state: AgentState, result: ExecutionResult) -> str:
         """Executive summary section with load execution transparency"""

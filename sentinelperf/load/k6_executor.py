@@ -467,7 +467,6 @@ class K6Executor:
         infra_timeline = []
         breaking_point_vus = 0
         infra_saturated_at_break = False
-        breaking_point_detected = False
         
         # Infra saturation threshold
         CPU_SATURATION_THRESHOLD = 85.0

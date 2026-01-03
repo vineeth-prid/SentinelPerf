@@ -105,6 +105,21 @@ class LoadTestingConfig(BaseModel):
     scale_step: int = Field(default=100, ge=1, description="VU increment step for autoscaling")
 
 
+class AutoscaleConfig(BaseModel):
+    """
+    Autoscale configuration for dynamic VU ramping.
+    
+    Autoscaling ramps VUs from initial_vus to max_vus in step_vus increments.
+    Stops early ONLY if breaking point detected (when abort_on_failure=true).
+    """
+    enabled: bool = Field(default=False, description="Enable autoscaling")
+    initial_vus: int = Field(default=1, ge=1, description="Starting VUs")
+    step_vus: int = Field(default=10, ge=1, description="VU increment per stage")
+    max_vus: int = Field(default=1000, ge=1, description="Maximum VUs to reach")
+    step_duration: str = Field(default="30s", description="Duration per stage")
+    abort_on_failure: bool = Field(default=True, description="Stop on breaking point detection")
+
+
 class TargetConfig(BaseModel):
     """Target application configuration"""
     base_url: str = Field(..., description="Base URL of target application")

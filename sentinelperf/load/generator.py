@@ -98,6 +98,13 @@ class TestScript:
     def to_k6_script(self) -> str:
         """Generate deterministic k6 JavaScript test script"""
         
+        # Guard: Ensure stages is a list
+        if not isinstance(self.stages, list):
+            raise ValueError(f"Invalid load plan: stages must be a list, got {type(self.stages).__name__}")
+        
+        if len(self.stages) == 0:
+            raise ValueError("Invalid load plan: stages list is empty, at least one stage required")
+        
         # Format stages (handle both TestStage and dict)
         stage_list = []
         for s in self.stages:

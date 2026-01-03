@@ -118,11 +118,9 @@ class MarkdownReporter:
         # Get execution metrics if result available
         if result:
             exec_status = result.get_execution_status().value
-            test_count = result.get_test_case_count()
             stop_reason = result.get_stop_reason()
         else:
             exec_status = "UNKNOWN"
-            test_count = len(state.load_results) if state.load_results else 0
             stop_reason = state.execution_stop_reason or state.autoscale_stop_reason or state.early_stop_reason or "N/A"
         
         # Autoscale execution proof

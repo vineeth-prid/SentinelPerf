@@ -820,6 +820,8 @@ class SentinelPerfAgent:
         - Latency p95/p99 degradation (slope-based)
         - Throughput plateau or drop despite rising VUs
         - Saturation indicators
+        
+        NOTE: "No breaking point detected" is a VALID outcome, not an error.
         """
         state["phase"] = AgentPhase.BREAKING_POINT_DETECTION.value
         
@@ -829,11 +831,13 @@ class SentinelPerfAgent:
         load_results = state.get("load_results", [])
         
         if not load_results:
+            # No load results - this is a warning, but execution continues
             if self.verbose:
-                print("  No load results to analyze")
+                print("  ⚠ No load results to analyze - continuing with no breaking point")
             state["breaking_point"] = None
             state["failure_category"] = FailureCategory.NO_FAILURE.value
             state["failure_timeline"] = []
+            # Do NOT set ERROR - this is a valid outcome
             return state
         
         # Initialize detector
@@ -861,7 +865,8 @@ class SentinelPerfAgent:
                 if len(result.timeline.events) > 5:
                     print(f"    ... and {len(result.timeline.events) - 5} more events")
             else:
-                print("  ✓ No breaking point detected")
+                # No breaking point is a VALID outcome
+                print("  ✓ No breaking point detected - system handled load successfully")
                 print(f"    Category: {result.primary_category.value}")
                 print(f"    Violations: {len(result.violations)}")
         

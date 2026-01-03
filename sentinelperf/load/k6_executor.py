@@ -548,7 +548,6 @@ class K6Executor:
             
             # Check for breaking point: ERROR THRESHOLD
             if error_rate >= error_threshold:
-                breaking_point_detected = True
                 breaking_point_vus = current_vus
                 infra_saturated_at_break = infra_saturated
                 if verbose:

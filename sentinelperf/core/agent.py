@@ -267,6 +267,12 @@ class SentinelPerfAgent:
             early_stop_reason=d.get("early_stop_reason"),
             planned_vus_stages=d.get("planned_vus_stages", []),
             executed_vus_stages=d.get("executed_vus_stages", []),
+            # Autoscale execution proof
+            autoscale_stop_reason=d.get("autoscale_stop_reason"),
+            autoscale_planned_max_vus=d.get("autoscale_planned_max_vus", 0),
+            autoscale_total_stages_planned=d.get("autoscale_total_stages_planned", 0),
+            autoscale_total_stages_executed=d.get("autoscale_total_stages_executed", 0),
+            autoscale_abort_on_failure=d.get("autoscale_abort_on_failure", True),
             # Report tracking
             report_generated=d.get("report_generated", False),
             # Execution status

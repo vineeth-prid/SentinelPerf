@@ -144,6 +144,7 @@ class EnvironmentConfig(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     recommendations: RecommendationsConfig = Field(default_factory=RecommendationsConfig)
     load_testing: Optional[LoadTestingConfig] = Field(default=None, description="Optional autoscaling configuration")
+    autoscale: Optional[AutoscaleConfig] = Field(default=None, description="Autoscale configuration")
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 

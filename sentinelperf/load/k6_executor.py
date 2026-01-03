@@ -560,7 +560,6 @@ class K6Executor:
             
             # Check for breaking point: LATENCY THRESHOLD
             if latency_p95 >= latency_p95_threshold_ms:
-                breaking_point_detected = True
                 breaking_point_vus = current_vus
                 infra_saturated_at_break = infra_saturated
                 if verbose:

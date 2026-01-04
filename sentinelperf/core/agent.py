@@ -679,7 +679,7 @@ class SentinelPerfAgent:
                 k6_results = self.k6_executor.execute_adaptive(
                     script=template_script,
                     initial_vus=self.config.load.initial_vus,
-                    max_vus=min(self.config.load.max_vus, 1000),  # Hard cap
+                    max_vus=max_vus_limit,  # Use configured limit, no hard cap
                     step=self.config.load.adaptive_step,
                     hold_seconds=self.config.load.adaptive_hold_seconds,
                     error_threshold=self.config.load.error_rate_threshold,

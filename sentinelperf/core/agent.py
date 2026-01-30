@@ -698,7 +698,8 @@ class SentinelPerfAgent:
         """
         Execute load tests using k6.
         
-        Runs actual k6 tests if available, otherwise creates mock results.
+        If autoscale is enabled: use autoscale config directly (code-driven).
+        Otherwise: run traditional test execution.
         """
         state["phase"] = AgentPhase.LOAD_EXECUTION.value
         
@@ -724,33 +725,115 @@ class SentinelPerfAgent:
             autoscale_cfg = self.config.autoscale
             autoscale_enabled = autoscale_cfg.enabled if autoscale_cfg else False
             
-            # Get autoscale parameters from config or use defaults
-            if autoscale_cfg and autoscale_enabled:
-                initial_vus = autoscale_cfg.initial_vus
+            error_threshold = self.config.load.error_rate_threshold
+            latency_p95_threshold = self.config.load.p95_latency_threshold_ms
+            
+            if autoscale_enabled and autoscale_cfg:
+                # AUTOSCALE MODE: Fully code-driven, never depends on test definitions
+                start_vus = autoscale_cfg.start_vus
                 max_vus_limit = autoscale_cfg.max_vus
                 step_vus = autoscale_cfg.step_vus
                 step_duration = autoscale_cfg.step_duration
                 abort_on_failure = autoscale_cfg.abort_on_failure
+                
+                # HARD FAIL if planned_max_vus is 0
+                if max_vus_limit <= 0:
+                    raise ValueError(f"Autoscale max_vus must be > 0, got {max_vus_limit}")
+                
                 # Parse step_duration (e.g., "30s" -> 30)
                 step_duration_seconds = int(step_duration.rstrip('s')) if step_duration.endswith('s') else 30
-            else:
-                # Fallback to load_testing config or load config
-                initial_vus = self.config.load.initial_vus
-                max_vus_limit = self.config.load_testing.max_vus_limit if self.config.load_testing else self.config.load.max_vus
-                step_vus = self.config.load_testing.scale_step if self.config.load_testing else self.config.load.adaptive_step
-                step_duration_seconds = 30
-                abort_on_failure = True
-            
-            error_threshold = self.config.load.error_rate_threshold
-            latency_p95_threshold = self.config.load.p95_latency_threshold_ms
-            
-            # Track config for reporting
-            state["configured_max_vus"] = max_vus_limit
-            state["autoscaling_enabled"] = autoscale_enabled
-            state["autoscale_abort_on_failure"] = abort_on_failure
-            
-            # Check if adaptive mode is enabled OR use autoscale stress by default
-            if self.config.load.adaptive_enabled:
+                
+                # Compute planned stages from autoscale config ONLY (never from tests or legacy fields)
+                planned_stages = list(range(start_vus, max_vus_limit + 1, step_vus))
+                if planned_stages and planned_stages[-1] < max_vus_limit:
+                    planned_stages.append(max_vus_limit)
+                
+                # Store autoscale plan in state
+                state["autoscale_planned_stages"] = planned_stages
+                state["autoscale_planned_max_vus"] = max_vus_limit
+                state["autoscale_total_stages_planned"] = len(planned_stages)
+                state["configured_max_vus"] = max_vus_limit
+                state["autoscaling_enabled"] = True
+                state["autoscale_abort_on_failure"] = abort_on_failure
+                
+                if self.verbose:
+                    print(f"  Autoscale: {start_vus} → {max_vus_limit} VUs (step={step_vus}, stages={len(planned_stages)})")
+                
+                # Use first generated script as template
+                template_script = self._generated_scripts[0]
+                
+                # Execute autoscale - starts at start_vus, increases stepwise until breaking point or max_vus
+                autoscale_result = self.k6_executor.execute_autoscale_stress(
+                    script=template_script,
+                    initial_vus=start_vus,
+                    max_vus_limit=max_vus_limit,
+                    step_vus=step_vus,
+                    step_duration_seconds=step_duration_seconds,
+                    error_threshold=error_threshold,
+                    latency_p95_threshold_ms=latency_p95_threshold,
+                    timeout_per_step=120,
+                    verbose=self.verbose,
+                    abort_on_failure=abort_on_failure,
+                )
+                
+                # Convert K6Result to LoadTestResult
+                for k6_result in autoscale_result.results:
+                    load_result = LoadTestResult(
+                        test_type=k6_result.test_type,
+                        vus=k6_result.metrics.vus_max,
+                        duration=f"{k6_result.duration_seconds:.0f}s",
+                        total_requests=k6_result.metrics.total_requests,
+                        successful_requests=k6_result.metrics.total_requests - k6_result.metrics.failed_requests,
+                        failed_requests=k6_result.metrics.failed_requests,
+                        error_rate=k6_result.metrics.error_rate,
+                        latency_p50_ms=k6_result.metrics.latency_p50,
+                        latency_p95_ms=k6_result.metrics.latency_p95,
+                        latency_p99_ms=k6_result.metrics.latency_p99,
+                        throughput_rps=k6_result.metrics.requests_per_second,
+                        raw_output=k6_result.raw_stdout[:1000] if k6_result.raw_stdout else "",
+                    )
+                    load_results.append(load_result)
+                
+                # Record REAL execution data (not intent)
+                state["achieved_max_vus"] = autoscale_result.max_vus_reached
+                state["executed_vus_stages"] = autoscale_result.executed_stages
+                state["autoscale_stop_reason"] = autoscale_result.stop_reason
+                state["autoscale_total_stages_executed"] = autoscale_result.total_stages_executed
+                
+                # Set stop reason
+                if autoscale_result.stop_reason == "breaking_point_detected":
+                    state["early_stop_reason"] = "breaking_point_detected"
+                    state["execution_stop_reason"] = f"Breaking point detected at {autoscale_result.max_vus_reached} VUs"
+                elif autoscale_result.stop_reason == "max_vus_reached":
+                    state["execution_stop_reason"] = f"Max VUs reached ({max_vus_limit})"
+                elif autoscale_result.stop_reason == "execution_error":
+                    state["early_stop_reason"] = "execution_error"
+                    state["execution_stop_reason"] = f"Execution error at {autoscale_result.max_vus_reached} VUs"
+                
+                # Build infra saturation data with timeline
+                if autoscale_result.infra_timeline:
+                    infra_snapshots = [point.to_dict() for point in autoscale_result.infra_timeline]
+                    infra_warnings = []
+                    
+                    for point in autoscale_result.infra_timeline:
+                        if point.saturated:
+                            if point.cpu_percent >= 85:
+                                infra_warnings.append(f"High CPU ({point.cpu_percent:.0f}%) at {point.vus} VUs")
+                            if point.memory_percent >= 90:
+                                infra_warnings.append(f"High memory ({point.memory_percent:.0f}%) at {point.vus} VUs")
+                    
+                    confidence_penalty = 0.15 if autoscale_result.infra_saturated_at_break else 0.0
+                    
+                    state["infra_saturation"] = {
+                        "data_available": True,
+                        "snapshots": infra_snapshots,
+                        "warnings": infra_warnings,
+                        "confidence_penalty": confidence_penalty,
+                        "saturated_at_break": autoscale_result.infra_saturated_at_break,
+                        "breaking_point_vus": autoscale_result.breaking_point_vus,
+                    }
+                
+            elif self.config.load.adaptive_enabled:
                 if self.verbose:
                     print("  Adaptive mode enabled")
                 

@@ -915,32 +915,8 @@ class SentinelPerfAgent:
                 if load_results:
                     state["achieved_max_vus"] = max((r.vus for r in load_results), default=0)
                     state["executed_vus_stages"] = [r.vus for r in load_results]
-                state["autoscale_total_stages_planned"] = autoscale_result.total_stages_planned
-                state["autoscale_total_stages_executed"] = autoscale_result.total_stages_executed
-                
-                # Set early stop reason
-                if autoscale_result.stop_reason != "max_vus_reached":
-                    state["early_stop_reason"] = autoscale_result.stop_reason
-                    state["execution_stop_reason"] = self._format_stop_reason(autoscale_result.stop_reason, autoscale_result.max_vus_reached)
-                else:
-                    state["execution_stop_reason"] = f"Max VUs reached ({max_vus_limit})"
-                
-                # Build infra saturation data with timeline
-                if autoscale_result.infra_timeline:
-                    infra_snapshots = [point.to_dict() for point in autoscale_result.infra_timeline]
-                    infra_warnings = []
-                    
-                    # Add warnings for saturated stages
-                    for point in autoscale_result.infra_timeline:
-                        if point.saturated:
-                            if point.cpu_percent >= 85:
-                                infra_warnings.append(
-                                    f"High CPU usage ({point.cpu_percent:.0f}%) at {point.vus} VUs"
-                                )
-                            if point.memory_percent >= 90:
-                                infra_warnings.append(
-                                    f"High memory usage ({point.memory_percent:.0f}%) at {point.vus} VUs"
-                                )
+            
+            state["load_results"] = load_results
                     
                     # Calculate confidence penalty ONLY if saturation occurred near breaking point
                     confidence_penalty = 0.0

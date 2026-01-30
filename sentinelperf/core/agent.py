@@ -917,26 +917,6 @@ class SentinelPerfAgent:
                     state["executed_vus_stages"] = [r.vus for r in load_results]
             
             state["load_results"] = load_results
-                    
-                    # Calculate confidence penalty ONLY if saturation occurred near breaking point
-                    confidence_penalty = 0.0
-                    if autoscale_result.infra_saturated_at_break:
-                        # Apply penalty only when infra saturation coincides with breaking point
-                        confidence_penalty = 0.15
-                        infra_warnings.append(
-                            f"⚠ Infrastructure saturation detected at breaking point ({autoscale_result.breaking_point_vus} VUs)"
-                        )
-                    
-                    state["infra_saturation"] = {
-                        "data_available": True,
-                        "snapshots": infra_snapshots,
-                        "warnings": infra_warnings,
-                        "confidence_penalty": confidence_penalty,
-                        "saturated_at_break": autoscale_result.infra_saturated_at_break,
-                        "breaking_point_vus": autoscale_result.breaking_point_vus,
-                    }
-            
-            state["load_results"] = load_results
             
             if self.verbose:
                 print(f"  Completed {len(load_results)} tests")

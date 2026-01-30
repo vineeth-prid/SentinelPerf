@@ -158,9 +158,10 @@ class AgentState:
     planned_vus_stages: List[int] = field(default_factory=list)  # Planned VU levels
     executed_vus_stages: List[int] = field(default_factory=list)  # Actually executed
     
-    # Autoscale execution proof
+    # Autoscale execution proof (code-driven, never from test definitions)
     autoscale_stop_reason: Optional[str] = None  # "breaking_point_detected", "max_vus_reached", "execution_error"
     autoscale_planned_max_vus: int = 0
+    autoscale_planned_stages: List[int] = field(default_factory=list)  # Computed from config
     autoscale_total_stages_planned: int = 0
     autoscale_total_stages_executed: int = 0
     autoscale_abort_on_failure: bool = True

@@ -446,15 +446,96 @@ class SentinelPerfAgent:
     
     def _node_test_generation(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate baseline, stress, and spike test configurations.
+        Generate test configurations.
         
-        Uses baseline behavior to inform test parameters.
+        If autoscale is enabled: skip baseline/stress/spike, use autoscale config directly.
+        Otherwise: generate baseline, stress, and spike test configurations.
         """
         state["phase"] = AgentPhase.TEST_GENERATION.value
         
         if self.verbose:
             print("[2/8] Generating test configurations...")
         
+        # Check if autoscale is enabled - if so, skip traditional test generation
+        autoscale_cfg = self.config.autoscale
+        autoscale_enabled = autoscale_cfg.enabled if autoscale_cfg else False
+        
+        if autoscale_enabled:
+            # AUTOSCALE MODE: Skip baseline/stress/spike test generation entirely
+            # Compute planned stages from autoscale config only
+            start_vus = autoscale_cfg.start_vus
+            max_vus = autoscale_cfg.max_vus
+            step_vus = autoscale_cfg.step_vus
+            
+            # HARD FAIL if planned_max_vus resolves to 0
+            if max_vus <= 0:
+                raise ValueError(f"Autoscale max_vus must be > 0, got {max_vus}")
+            
+            # Compute planned stages (code-driven, never from test definitions)
+            planned_stages = list(range(start_vus, max_vus + 1, step_vus))
+            # Ensure max_vus is included if step doesn't land exactly
+            if planned_stages and planned_stages[-1] < max_vus:
+                planned_stages.append(max_vus)
+            
+            # Store autoscale plan in state
+            state["autoscale_planned_stages"] = planned_stages
+            state["autoscale_planned_max_vus"] = max_vus
+            state["autoscale_total_stages_planned"] = len(planned_stages)
+            state["configured_max_vus"] = max_vus
+            state["autoscaling_enabled"] = True
+            
+            if self.verbose:
+                print(f"  Autoscale mode enabled")
+                print(f"  Planned: {start_vus} → {max_vus} VUs (step={step_vus})")
+                print(f"  Total stages planned: {len(planned_stages)}")
+            
+            # Get endpoints for testing (minimal - just for k6 script)
+            endpoints = []
+            if self.config.target.endpoints:
+                endpoints = [
+                    {"path": ep, "method": "GET", "weight": 1}
+                    for ep in self.config.target.endpoints
+                ]
+            
+            # Do NOT auto-generate /health probes when autoscale is enabled
+            if not endpoints:
+                # Use base URL only - no health endpoint inference
+                endpoints = [{"path": "/", "method": "GET", "weight": 1}]
+            
+            # Get auth headers
+            auth_headers = self._get_auth_headers()
+            
+            # Initialize generator for autoscale template only
+            generator = TestGenerator(
+                base_url=self.config.target.base_url,
+                auth_headers=auth_headers,
+            )
+            self._test_generator = generator
+            
+            # Generate a minimal template script for autoscale execution
+            autoscale_template = generator.generate_stress_test(
+                endpoints=endpoints,
+                start_vus=start_vus,
+                max_vus=max_vus,
+                step_vus=step_vus,
+            )
+            self._generated_scripts = [autoscale_template]
+            
+            # Store minimal generated_tests metadata
+            state["generated_tests"] = [
+                {
+                    "type": "autoscale",
+                    "name": "autoscale_execution",
+                    "vus": max_vus,
+                    "stages": len(planned_stages),
+                    "endpoint_count": len(endpoints),
+                    "endpoints": endpoints,
+                },
+            ]
+            
+            return state
+        
+        # LEGACY MODE: Generate baseline/stress/spike tests
         # Get baseline data for load planning
         load_plan_input = self._get_load_plan_input()
         

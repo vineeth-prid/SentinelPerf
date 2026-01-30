@@ -486,7 +486,7 @@ class SentinelPerfAgent:
             state["autoscaling_enabled"] = True
             
             if self.verbose:
-                print(f"  Autoscale mode enabled")
+                print("  Autoscale mode enabled")
                 print(f"  Planned: {start_vus} → {max_vus} VUs (step={step_vus})")
                 print(f"  Total stages planned: {len(planned_stages)}")
             
